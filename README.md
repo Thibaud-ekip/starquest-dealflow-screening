@@ -5,9 +5,8 @@ An n8n workflow that screens the exhibitors of a trade show for Starquest, a cli
 ## Results
 Run on the Salon des maires and Salon de la biodiversité (1,385 exhibitors, 186 startups shortlisted):
 
-| 186 startups screened | 95 fit a fund's mandate | 58 ranked | **33 to meet** |
-|:-:|:-:|:-:|:-:|
-| | | | 14 P1 · 19 P2 (+25 P2 with reservations) |
+| 186 startups screened | 95 fit a fund's mandate | **33 to meet** |
+|:-:|:-:|:-:|
 
 ![Google Sheet output](docs/sheet-output.webp)
 
@@ -19,8 +18,6 @@ flowchart LR
     C --> E[🟡 Follow up]
     C --> F[⚪ Pass]
 ```
-
-![n8n workflow](docs/workflow.png)
 
 ## How it works
 A first AI call identifies the company and assigns it to the fund whose thesis matches its core business; anything off-thesis is passed straight away. A second call checks the company against that fund's criteria (size, stage, independence, ticket size), then looks for three sourced proofs: **Impact**, **Traction** and **Potential**. The final ranking is computed by code, not by the AI: impact is mandatory (Article 9 funds), and the more proofs are confirmed by a real source, the higher the priority.
