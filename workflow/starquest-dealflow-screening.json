@@ -1,0 +1,1110 @@
+{
+  "name": "Starquest · Screening exposants salons (dealflow AI)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Entrée\nLes **entreprises à analyser** (nom, stand, salon, fonds).\n**Config** : `limit` (10 pour un test, null pour tout), `only`, modèle, **id de la Google Sheet**, et un **prompt par fonds** (Protect, CCR-F, Objectif Biodiversité).",
+        "height": 520,
+        "width": 940,
+        "color": 7
+      },
+      "id": "994285c2-d761-461a-97fb-6066d4ee849a",
+      "name": "Note · Entrée",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        12384,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Étape 2 · Workflow IA, deux appels par entreprise\n**Appel 1 · Routage** : Gemini identifie l'entreprise sur Google et la rattache à UN fonds (Protect, CCR-F, Objectif Biodiversité), ou Hors thèse → Pass, sans 2e appel.\n**Appel 2 · Grille du fonds choisi** : profil et stade selon le ticket, puis 3 preuves sourcées (Impact, Traction, Potentiel).\n**Impact ✓ obligatoire** · **P1** 3 ✓ et pertinence 3 · **P2** Impact ✓ + 1 ✓ · **À suivre** impact ou preuves incomplets · **Pass** sinon.",
+        "height": 560,
+        "width": 2200,
+        "color": 4
+      },
+      "id": "3654df18-2eeb-4320-b343-ac2b2f339824",
+      "name": "Note · Analyse",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        13328,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2 · Google Sheet\n**À rencontrer** : P1 et P2 · **À suivre** : onglet séparé · chaque preuve cliquable.\n**Exposants** : met à jour la ligne de chaque entreprise (Sortie, Résultat, Source) ; les Pass y restent avec leur motif.\n**CSV audit** (fichier à télécharger depuis le dernier nœud) : raisonnement, recherches, pages consultées, contrôle de la règle.\nAvant un nouveau run complet, vider les onglets **À rencontrer** et **À suivre** (sauf l'en-tête).",
+        "height": 1000,
+        "width": 1000,
+        "color": 5
+      },
+      "id": "30a4bc5d-7af9-458d-9dff-ab36040c8545",
+      "name": "Note · Sortie",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        15536,
+        -224
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "9f119c60-53df-45f5-b277-2e8486fbfd2a",
+      "name": "Lancer le screening",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        12448,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Tous les réglages, dont un prompt par fonds. Modifier ici, nulle part ailleurs.\nconst CONFIG = {\n  \"_readme\": \"Réglages en haut. limit = 10 pour un test, null pour tout. only = liste de noms exacts pour relancer quelques entreprises. prompts.routage = appel 1 (identification et choix du fonds) ; puis un prompt par fonds pour l'appel 2.\",\n  \"limit\": null,\n  \"offset\": 0,\n  \"only\": [],\n  \"model_analysis\": \"gemini-flash-latest\",\n  \"thinking_level\": null,\n  \"spreadsheet_id\": \"1hsIhh3yZK58BXjQlkxF03u94LbE9RaSjhM-htkuflhg\",\n  \"separateur_formule\": \";\",\n  \"funds\": {\n    \"Protect\": {\n      \"FONDS\": \"Starquest Protect\",\n      \"MANDAT\": \"Starquest Protect (Article 9) finance la décarbonation et la protection des ressources : tickets de 3 à 15 M€, principalement en capital-développement, dans des startups établies et des PME au modèle prouvé (product-market fit validé, chiffre d'affaires supérieur à 1 M€) qui accélèrent commercialement.\",\n      \"PROFIL\": \"Le modèle est-il prouvé, avec un chiffre d'affaires supérieur à 1 M€ et des clients récurrents ? Une société clairement en amorçage (prototype, premier pilote, levée seed récente sans revenus), c'est PASS. Si le dernier chiffre d'affaires publié est inférieur à 1 M€, l'entreprise ne remplit pas le critère du mail : elle ne peut pas être mieux classée que À SUIVRE, même avec toutes ses preuves ✓ (dis-le dans « Pourquoi les rencontrer »). Une entreprise nettement trop grande pour un ticket minoritaire de 3 à 15 M€ (plus de 300 M€ de chiffre d'affaires environ), c'est PASS ; une ETI de 50 à 300 M€ reste possible, avec une pertinence de 2.\",\n      \"VERTICALES\": [\n        \"Efficacité énergétique des bâtiments et de l'industrie\",\n        \"Rénovation énergétique\",\n        \"Décarbonation des procédés industriels\",\n        \"Mobilité et logistique bas-carbone\",\n        \"Économie circulaire (recyclage, réemploi, réparation)\",\n        \"Production et gestion d'énergies renouvelables\"\n      ],\n      \"EXCLUSIONS\": \"Un distributeur ou un négociant sans technologie ni service propre, du mobilier urbain, de l'éclairage LED classique, un fabricant de produits sans lien avec la décarbonation\",\n      \"IMPACT\": \"tonnes de CO₂ évitées, MWh économisés, MW installés, tonnes recyclées ou réemployées\",\n      \"POTENTIEL\": \"l'entreprise est-elle en accélération commerciale, comme le demande la thèse Protect ? Cherche son actualité récente (« [nom] 2026 », « [nom] 2025 »). ✓ = un fait daté de moins de 24 mois qui montre une accélération : croissance du chiffre d'affaires, nouveaux marchés ou pays, nouvelle usine ou capacité, croissance externe, gros contrat. D = une croissance évoquée sans chiffre ni date, ou un fait plus ancien.\"\n    },\n    \"CCR-F\": {\n      \"FONDS\": \"Starquest CCR-F\",\n      \"MANDAT\": \"Starquest CCR-F, dont l'investisseur d'ancrage est la Caisse Centrale de Réassurance, finance la prévention des catastrophes naturelles et l'adaptation des territoires : du seed au LBO, tickets de 0,5 à 10 M€.\",\n      \"PROFIL\": \"Tous les stades sont possibles, du seed au LBO : une startup précoce reste éligible si sa technologie est réelle. Une entreprise nettement trop grande (plus de 300 M€ de chiffre d'affaires environ), c'est PASS ; une ETI de 50 à 300 M€ reste possible (part minoritaire ou LBO), avec une pertinence de 2.\",\n      \"VERTICALES\": [\n        \"Eaux pluviales et inondations\",\n        \"Retrait-gonflement des argiles et géotechnique\",\n        \"Prévention des feux de forêt\",\n        \"Capteurs de surveillance et d'alerte\",\n        \"Données et modélisation des risques climatiques\",\n        \"Résilience des bâtiments et des infrastructures\"\n      ],\n      \"EXCLUSIONS\": \"Un logiciel de gestion de crise ou des radios, l'expertise après sinistre, la démoustication, la brumisation anti-chaleur, le traitement d'eaux de process sans lien avec un aléa naturel\",\n      \"IMPACT\": \"ouvrages anti-crue réalisés, volumes d'eau stockés ou infiltrés, surfaces désimperméabilisées, sites ou kilomètres surveillés, sinistres évités\",\n      \"POTENTIEL\": \"le modèle peut-il porter un ticket de 0,5 à 10 M€ ? ✓ = un fait sourcé montrant un actif propre et différenciant (produit ou matériau breveté, technologie, logiciel ou données de risque, capteurs) ou un modèle réplicable et rentable (plusieurs implantations, résultat positif, contrats récurrents avec des collectivités, des assureurs ou des gestionnaires d'infrastructures). D = de la pure prestation, de l'installation ou de la distribution de produits tiers, ou un actif propre seulement revendiqué.\"\n    },\n    \"Objectif Biodiversité\": {\n      \"FONDS\": \"Starquest Objectif Biodiversité\",\n      \"MANDAT\": \"Starquest Objectif Biodiversité (Article 9, plus de 220 M€) finance la préservation et la restauration du vivant : du seed au LBO, tickets de 3 à 20 M€, principalement en France et ouvert à l'OCDE (Allemagne, Benelux, Royaume-Uni).\",\n      \"PROFIL\": \"Tous les stades sont possibles, du seed au LBO, mais la taille doit permettre un ticket de 3 à 20 M€ : une très petite structure (bureau d'études de quelques personnes, TPE locale) reste en marge (pertinence 1). Une entreprise nettement trop grande (plus de 300 M€ de chiffre d'affaires environ), c'est PASS ; une ETI de 50 à 300 M€ reste possible, avec une pertinence de 2.\",\n      \"VERTICALES\": [\n        \"Agriculture régénératrice et agroécologie\",\n        \"Biocontrôle et réduction des pesticides\",\n        \"Protéines alternatives et filières végétales\",\n        \"Dépollution des sols et de l'eau\",\n        \"Génie écologique et restauration\",\n        \"Aquaculture durable et économie de la mer\",\n        \"Forêt-bois et pépinières\",\n        \"Nature en ville\"\n      ],\n      \"EXCLUSIONS\": \"La simple vente de produits de jardinage ou de mobilier, un organisme de qualification, une association\",\n      \"IMPACT\": \"hectares restaurés ou renaturés, kilomètres de berges ou de cours d'eau, arbres produits ou plantés, volumes de sols ou d'eau dépollués, pesticides évités ; idéalement rattaché à l'une des cinq pressions sur le vivant (changement d'usage des terres, surexploitation, pollutions, espèces invasives, climat)\",\n      \"POTENTIEL\": \"le modèle peut-il absorber un ticket de 3 à 20 M€ ? ✓ = un fait sourcé montrant un actif propre (production végétale, procédé de dépollution, technologie, données, sites de restauration ou de compensation) ou un modèle réplicable et rentable (plusieurs implantations, croissance externe, résultat positif). D = une prestation locale difficile à répliquer, ou un modèle seulement revendiqué.\"\n    }\n  },\n  \"prompts\": {\n    \"routage\": \"Tu es analyste chez Starquest. Une entreprise expose au Salon des maires ou au Salon de la biodiversité (Paris). Ta seule tâche ici : l'identifier et la rattacher au fonds Starquest dont la thèse correspond à son cœur de métier. Tu ne juges ni sa taille, ni son stade, ni ses finances : un autre analyste le fera ensuite avec la grille du fonds choisi.\\n\\nCommence par chercher sur Google, avant de raisonner : cherche son nom avec son activité ou sa ville, et ouvre son site s'il apparaît. Plusieurs sociétés portent parfois le même nom : retiens celle dont l'activité correspond à un exposant de ces salons (collectivités, environnement, énergie, risques naturels, nature en ville). Une recherche suffit en général, deux au maximum : ne cherche ni le chiffre d'affaires, ni l'actionnariat, ni l'actualité.\\n\\nLes trois fonds et leurs verticales :\\n- Protect (décarbonation et protection des ressources) : efficacité énergétique des bâtiments et de l'industrie ; rénovation énergétique ; décarbonation des procédés industriels ; mobilité et logistique bas-carbone ; économie circulaire (recyclage, réemploi, réparation) ; production et gestion d'énergies renouvelables.\\n- CCR-F (prévention des catastrophes naturelles et adaptation des territoires) : eaux pluviales et inondations ; retrait-gonflement des argiles et géotechnique ; prévention des feux de forêt ; capteurs de surveillance et d'alerte ; données et modélisation des risques climatiques ; résilience des bâtiments et des infrastructures.\\n- Objectif Biodiversité (préservation et restauration du vivant) : agriculture régénératrice et agroécologie ; biocontrôle et réduction des pesticides ; protéines alternatives et filières végétales ; dépollution des sols et de l'eau ; génie écologique et restauration ; aquaculture durable et économie de la mer ; forêt-bois et pépinières ; nature en ville.\\n\\nComment choisir :\\n1. Décris en une phrase ce que l'entreprise vend, et à qui.\\n2. Choisis UN fonds principal : celui dont une verticale décrit son cœur de métier, c'est-à-dire l'activité qui fait l'essentiel de son chiffre d'affaires, pas un produit annexe ni un argument marketing.\\n3. En cas d'hésitation, demande-toi quel effet principal produit l'activité : réduire des émissions ou économiser des ressources → Protect ; éviter ou réduire un dommage causé par un aléa naturel (crue, ruissellement, sécheresse des sols, feu, mouvement de terrain, chaleur extrême) → CCR-F ; réduire une pression sur le vivant ou restaurer des milieux → Objectif Biodiversité.\\n4. Indique un fonds secondaire seulement si une part importante de l'activité relève clairement d'une autre thèse ; sinon « Aucun ».\\n5. Réponds « Hors thèse » seulement si tu es sûr qu'aucune verticale des trois fonds ne décrit son cœur de métier, et dis dans la justification quelle activité l'exclut. En cas de doute, choisis le fonds le plus proche : l'analyste suivant revérifiera la thèse avec la grille complète. Écarter à tort une bonne entreprise coûte bien plus cher que d'en analyser une de trop.\\n6. Ne conclus jamais « Hors thèse » à partir de la seule fiche du salon ou d'une catégorie d'exposant : il faut une page qui décrit l'activité de l'entreprise elle-même (son site, la presse, un annuaire d'entreprises). Si tu n'en trouves pas après deux recherches, réponds « Non identifiée ».\\n\\nPour l'activité, donne l'URL complète de la page où tu l'as trouvée, telle qu'elle apparaît dans tes résultats (n'invente jamais une URL). Rédige en français, en phrases courtes.\\n\",\n    \"Protect\": \"Tu es analyste chez Starquest, pour le fonds Starquest Protect. Starquest Protect (Article 9) finance la décarbonation et la protection des ressources : tickets de 3 à 15 M€, principalement en capital-développement, dans des startups établies et des PME au modèle prouvé (product-market fit validé, chiffre d'affaires supérieur à 1 M€) qui accélèrent commercialement.\\n\\nL'équipe prépare sa visite du Salon des maires et du Salon de la biodiversité (Paris, Porte de Versailles). L'entreprise ci-dessous y expose. Un premier tri l'a déjà jugée investissable et l'a rattachée à ce fonds. Ta mission : dire si l'équipe doit aller la voir sur son stand, et avec quelle priorité.\\n\\nLa date du jour t'est donnée avec l'entreprise : tous les délais (12 mois, 24 mois, 4 ans) se comptent à partir de cette date. Commence par chercher sur Google, avant de raisonner : ne t'appuie sur aucun fait de mémoire, même si tu crois connaître l'entreprise. Applique ensuite la grille qu'un analyste de Starquest suivrait, en trois questions dans l'ordre. Compte 3 à 5 minutes par entreprise.\\n\\n1. Le profil : l'entreprise correspond-elle au fonds ?\\n\\n* Identifie-la avec certitude : cherche son nom avec son activité ou sa ville, et ouvre son site s'il apparaît. Plusieurs sociétés portent parfois le même nom : retiens celle dont l'activité correspond à un exposant de ces salons (collectivités, environnement, énergie, risques naturels, nature en ville). Si tu ne peux pas l'identifier, c'est PASS (« non identifiée »).\\n* Quelle est sa taille ? Cherche « [nom] chiffre d'affaires 2026 », « [nom] chiffre d'affaires 2025 », « [nom] chiffre d'affaires 2024 » et « [nom] effectif » (presse économique, Pappers, Societe.com, Xerfi, annuaire-entreprises.data.gouv.fr). Retiens le dernier exercice publié et donne toujours son année : si tu trouves plusieurs chiffres, prends celui de l'année la plus récente, jamais une moyenne ni une estimation. S'il a plus de trois ans, dis-le et traite la taille comme un point à vérifier, pas comme un fait acquis. Un objectif ou une prévision (« vise 20 M€ en 2026 ») n'est pas un chiffre d'affaires : cite-le à part dans ton raisonnement. Un chiffre de groupe et un chiffre de filiale ne se mélangent pas : dis lequel tu donnes. Le modèle est-il prouvé, avec un chiffre d'affaires supérieur à 1 M€ et des clients récurrents ? Une société clairement en amorçage (prototype, premier pilote, levée seed récente sans revenus), c'est PASS. Si le dernier chiffre d'affaires publié est inférieur à 1 M€, l'entreprise ne remplit pas le critère du mail : elle ne peut pas être mieux classée que À SUIVRE, même avec toutes ses preuves ✓ (dis-le dans « Pourquoi les rencontrer »). Une entreprise nettement trop grande pour un ticket minoritaire de 3 à 15 M€ (plus de 300 M€ de chiffre d'affaires environ), c'est PASS ; une ETI de 50 à 300 M€ reste possible, avec une pertinence de 2.\\n* Est-elle indépendante ? Cherche « [nom] groupe », « [nom] actionnaire » ou « [nom] rachat ». Une filiale de groupe, une société cotée, une association, une SCOP, une régie ou une structure publique, c'est PASS.\\n* Qui est à son capital ? Cherche « [nom] levée de fonds ». Une levée récente n'est pas un PASS : note le tour, son montant, ses investisseurs et son mois. Elle sert au type de deal, à « Pourquoi les rencontrer » et à la question à poser.\\n* Une donnée seulement introuvable (CA non publié, actionnariat inconnu) n'est pas un PASS : c'est un point à vérifier sur le stand.\\n\\n2. La thèse : son cœur de métier est-il dans une verticale du fonds ?\\n\\n* Verticales du fonds : efficacité énergétique des bâtiments et de l'industrie ; rénovation énergétique ; décarbonation des procédés industriels ; mobilité et logistique bas-carbone ; économie circulaire (recyclage, réemploi, réparation) ; production et gestion d'énergies renouvelables.\\n* C'est le cœur de métier qui compte, pas un produit annexe : regarde son site et sa présentation dans la presse. Un distributeur ou un négociant sans technologie ni service propre, du mobilier urbain, de l'éclairage LED classique, un fabricant de produits sans lien avec la décarbonation : c'est PASS.\\n\\n3. Les preuves : note trois preuves, chacune ✓, D ou ?. Le fonds est classé Article 9 : l'impact est son objectif et doit être mesurable. L'Impact est donc la condition d'accès : sans Impact ✓, l'entreprise ne peut pas être P1 ni P2.\\n\\n* Impact : l'entreprise a-t-elle un impact mesurable au cœur de la verticale ? Cherche ses réalisations (chantiers, installations, volumes). ✓ = un fait précis, sourcé et chiffré sur ce que fait l'entreprise (tonnes de CO₂ évitées, MWh économisés, MW installés, tonnes recyclées ou réemployées). D = seulement une description commerciale, une promesse (« jusqu'à 30 % d'économies ») ou une activité en partie seulement dans la verticale. ? = rien trouvé.\\n* Traction : ✓ = un chiffre (chiffre d'affaires, effectif, nombre de sites, de clients, de MW) ou un client ou un contrat nommé. D = des clients évoqués sans nom ni chiffre. Un investisseur, une subvention, un prix ou un accélérateur ne comptent pas.\\n* Potentiel : l'entreprise est-elle en accélération commerciale, comme le demande la thèse Protect ? Cherche son actualité récente (« [nom] 2026 », « [nom] 2025 »). ✓ = un fait daté de moins de 24 mois qui montre une accélération : croissance du chiffre d'affaires, nouveaux marchés ou pays, nouvelle usine ou capacité, croissance externe, gros contrat. D = une croissance évoquée sans chiffre ni date, ou un fait plus ancien. ? = rien trouvé.\\n* Le timing capitalistique (levée récente ou ancienne, LBO de plus de 4 ans, succession du dirigeant, nouveau tour en préparation) ne note pas de preuve : mentionne-le dans « Pourquoi les rencontrer » et sers-t'en pour la question à poser.\\n* Une preuve sans URL ne peut pas être ✓.\\n* Pertinence de 1 à 3 : 3 = au cœur de la thèse et à la bonne taille pour un ticket de ce fonds ; 2 = dans la thèse, mais taille ou modèle à confirmer ; 1 = en marge de la thèse ou probablement trop petite.\\n* Type de deal : le deal le plus probable pour ce fonds, au vu de la taille, du stade et de l'actionnariat (amorçage ou Série A, Série B et plus, capital-développement minoritaire, LBO ou transmission) ; « à déterminer » si les faits manquent.\\n\\n## Ta décision\\nPrends la décision toi-même, avec l'un de ces quatre résultats :\\n- P1 : Impact ✓, Traction ✓, Potentiel ✓ et pertinence 3 ; à voir en priorité sur le salon.\\n- P2 : Impact ✓ et au moins une autre preuve ✓.\\n- À SUIVRE : Impact ✓ seul, ou Impact D avec au moins une autre preuve ✓.\\n- PASS : non à l'étape 1 ou à l'étape 2, entreprise non identifiée, Impact « ? », ou Impact D sans autre preuve ✓. Donne la raison dans `motif_pass`, et dans `etape_pass` l'étape où l'entreprise sort.\\n\\n## Format de réponse\\nFais 4 à 6 recherches ciblées au plus. Arrête de chercher dès que tu peux décider : si c'est un PASS à l'étape 1 ou 2, ne cherche pas les preuves de l'étape 3. Utilise toujours les données les plus récentes que tu trouves : pour chaque fait, garde la source la plus récente et donne sa date. Quand deux sources se contredisent (deux CA différents, par exemple), retiens la plus récente et cite l'autre dans ton raisonnement. Pour chaque fait, donne l'URL complète de la page où tu l'as trouvé, telle qu'elle apparaît dans tes résultats (n'invente jamais une URL). Rédige en français, en phrases courtes.\\n« Pourquoi les rencontrer » tient en une phrase courte et percutante : l'impact, les forces vérifiées, le potentiel et, s'il y en a un, le moment capitalistique (levée, LBO, transmission).\\n« Question à poser » est la question que l'analyste de Starquest posera au dirigeant de l'entreprise, en face à face sur son stand, pour avancer vers une décision d'investissement. Elle part d'un fait trouvé ou d'un point resté à vérifier (taille réelle, rentabilité, actionnariat, besoin de capital et son montant, calendrier, part de l'activité dans la verticale), et appelle une réponse chiffrée ou précise, pas un oui ou un non. Elle ne cite jamais Starquest, ne propose pas d'investir et ne demande pas si l'entreprise « envisage d'ouvrir son capital à un fonds ». Exemples du ton attendu : « Votre CA est passé de 16 à 16,6 M€ : quelle part vient des risques naturels, et quel investissement faudrait-il pour doubler cette activité ? » ; « Le MBO de 2019 a sept ans : comment les actionnaires actuels voient-ils leur sortie ? ».\\n\",\n    \"CCR-F\": \"Tu es analyste chez Starquest, pour le fonds Starquest CCR-F. Starquest CCR-F, dont l'investisseur d'ancrage est la Caisse Centrale de Réassurance, finance la prévention des catastrophes naturelles et l'adaptation des territoires : du seed au LBO, tickets de 0,5 à 10 M€.\\n\\nL'équipe prépare sa visite du Salon des maires et du Salon de la biodiversité (Paris, Porte de Versailles). L'entreprise ci-dessous y expose. Un premier tri l'a déjà jugée investissable et l'a rattachée à ce fonds. Ta mission : dire si l'équipe doit aller la voir sur son stand, et avec quelle priorité.\\n\\nLa date du jour t'est donnée avec l'entreprise : tous les délais (12 mois, 24 mois, 4 ans) se comptent à partir de cette date. Commence par chercher sur Google, avant de raisonner : ne t'appuie sur aucun fait de mémoire, même si tu crois connaître l'entreprise. Applique ensuite la grille qu'un analyste de Starquest suivrait, en trois questions dans l'ordre. Compte 3 à 5 minutes par entreprise.\\n\\n1. Le profil : l'entreprise correspond-elle au fonds ?\\n\\n* Identifie-la avec certitude : cherche son nom avec son activité ou sa ville, et ouvre son site s'il apparaît. Plusieurs sociétés portent parfois le même nom : retiens celle dont l'activité correspond à un exposant de ces salons (collectivités, environnement, énergie, risques naturels, nature en ville). Si tu ne peux pas l'identifier, c'est PASS (« non identifiée »).\\n* Quelle est sa taille ? Cherche « [nom] chiffre d'affaires 2026 », « [nom] chiffre d'affaires 2025 », « [nom] chiffre d'affaires 2024 » et « [nom] effectif » (presse économique, Pappers, Societe.com, Xerfi, annuaire-entreprises.data.gouv.fr). Retiens le dernier exercice publié et donne toujours son année : si tu trouves plusieurs chiffres, prends celui de l'année la plus récente, jamais une moyenne ni une estimation. S'il a plus de trois ans, dis-le et traite la taille comme un point à vérifier, pas comme un fait acquis. Un objectif ou une prévision (« vise 20 M€ en 2026 ») n'est pas un chiffre d'affaires : cite-le à part dans ton raisonnement. Un chiffre de groupe et un chiffre de filiale ne se mélangent pas : dis lequel tu donnes. Tous les stades sont possibles, du seed au LBO : une startup précoce reste éligible si sa technologie est réelle. Une entreprise nettement trop grande (plus de 300 M€ de chiffre d'affaires environ), c'est PASS ; une ETI de 50 à 300 M€ reste possible (part minoritaire ou LBO), avec une pertinence de 2.\\n* Est-elle indépendante ? Cherche « [nom] groupe », « [nom] actionnaire » ou « [nom] rachat ». Une filiale de groupe, une société cotée, une association, une SCOP, une régie ou une structure publique, c'est PASS.\\n* Qui est à son capital ? Cherche « [nom] levée de fonds ». Une levée récente n'est pas un PASS : note le tour, son montant, ses investisseurs et son mois. Elle sert au type de deal, à « Pourquoi les rencontrer » et à la question à poser.\\n* Une donnée seulement introuvable (CA non publié, actionnariat inconnu) n'est pas un PASS : c'est un point à vérifier sur le stand.\\n\\n2. La thèse : son cœur de métier est-il dans une verticale du fonds ?\\n\\n* Verticales du fonds : eaux pluviales et inondations ; retrait-gonflement des argiles et géotechnique ; prévention des feux de forêt ; capteurs de surveillance et d'alerte ; données et modélisation des risques climatiques ; résilience des bâtiments et des infrastructures.\\n* C'est le cœur de métier qui compte, pas un produit annexe : regarde son site et sa présentation dans la presse. Un logiciel de gestion de crise ou des radios, l'expertise après sinistre, la démoustication, la brumisation anti-chaleur, le traitement d'eaux de process sans lien avec un aléa naturel : c'est PASS.\\n\\n3. Les preuves : note trois preuves, chacune ✓, D ou ?. Le fonds est classé Article 9 : l'impact est son objectif et doit être mesurable. L'Impact est donc la condition d'accès : sans Impact ✓, l'entreprise ne peut pas être P1 ni P2.\\n\\n* Impact : l'entreprise a-t-elle un impact mesurable au cœur de la verticale ? Cherche ses réalisations (chantiers, installations, volumes). ✓ = un fait précis, sourcé et chiffré sur ce que fait l'entreprise (ouvrages anti-crue réalisés, volumes d'eau stockés ou infiltrés, surfaces désimperméabilisées, sites ou kilomètres surveillés, sinistres évités). D = seulement une description commerciale, une promesse (« jusqu'à 30 % d'économies ») ou une activité en partie seulement dans la verticale. ? = rien trouvé.\\n* Traction : ✓ = un chiffre (chiffre d'affaires, effectif, nombre de sites, de clients, de MW) ou un client ou un contrat nommé. D = des clients évoqués sans nom ni chiffre. Un investisseur, une subvention, un prix ou un accélérateur ne comptent pas.\\n* Potentiel : le modèle peut-il porter un ticket de 0,5 à 10 M€ ? ✓ = un fait sourcé montrant un actif propre et différenciant (produit ou matériau breveté, technologie, logiciel ou données de risque, capteurs) ou un modèle réplicable et rentable (plusieurs implantations, résultat positif, contrats récurrents avec des collectivités, des assureurs ou des gestionnaires d'infrastructures). D = de la pure prestation, de l'installation ou de la distribution de produits tiers, ou un actif propre seulement revendiqué. ? = rien trouvé.\\n* Le timing capitalistique (levée récente ou ancienne, LBO de plus de 4 ans, succession du dirigeant, nouveau tour en préparation) ne note pas de preuve : mentionne-le dans « Pourquoi les rencontrer » et sers-t'en pour la question à poser.\\n* Une preuve sans URL ne peut pas être ✓.\\n* Pertinence de 1 à 3 : 3 = au cœur de la thèse et à la bonne taille pour un ticket de ce fonds ; 2 = dans la thèse, mais taille ou modèle à confirmer ; 1 = en marge de la thèse ou probablement trop petite.\\n* Type de deal : le deal le plus probable pour ce fonds, au vu de la taille, du stade et de l'actionnariat (amorçage ou Série A, Série B et plus, capital-développement minoritaire, LBO ou transmission) ; « à déterminer » si les faits manquent.\\n\\n## Ta décision\\nPrends la décision toi-même, avec l'un de ces quatre résultats :\\n- P1 : Impact ✓, Traction ✓, Potentiel ✓ et pertinence 3 ; à voir en priorité sur le salon.\\n- P2 : Impact ✓ et au moins une autre preuve ✓.\\n- À SUIVRE : Impact ✓ seul, ou Impact D avec au moins une autre preuve ✓.\\n- PASS : non à l'étape 1 ou à l'étape 2, entreprise non identifiée, Impact « ? », ou Impact D sans autre preuve ✓. Donne la raison dans `motif_pass`, et dans `etape_pass` l'étape où l'entreprise sort.\\n\\n## Format de réponse\\nFais 4 à 6 recherches ciblées au plus. Arrête de chercher dès que tu peux décider : si c'est un PASS à l'étape 1 ou 2, ne cherche pas les preuves de l'étape 3. Utilise toujours les données les plus récentes que tu trouves : pour chaque fait, garde la source la plus récente et donne sa date. Quand deux sources se contredisent (deux CA différents, par exemple), retiens la plus récente et cite l'autre dans ton raisonnement. Pour chaque fait, donne l'URL complète de la page où tu l'as trouvé, telle qu'elle apparaît dans tes résultats (n'invente jamais une URL). Rédige en français, en phrases courtes.\\n« Pourquoi les rencontrer » tient en une phrase courte et percutante : l'impact, les forces vérifiées, le potentiel et, s'il y en a un, le moment capitalistique (levée, LBO, transmission).\\n« Question à poser » est la question que l'analyste de Starquest posera au dirigeant de l'entreprise, en face à face sur son stand, pour avancer vers une décision d'investissement. Elle part d'un fait trouvé ou d'un point resté à vérifier (taille réelle, rentabilité, actionnariat, besoin de capital et son montant, calendrier, part de l'activité dans la verticale), et appelle une réponse chiffrée ou précise, pas un oui ou un non. Elle ne cite jamais Starquest, ne propose pas d'investir et ne demande pas si l'entreprise « envisage d'ouvrir son capital à un fonds ». Exemples du ton attendu : « Votre CA est passé de 16 à 16,6 M€ : quelle part vient des risques naturels, et quel investissement faudrait-il pour doubler cette activité ? » ; « Le MBO de 2019 a sept ans : comment les actionnaires actuels voient-ils leur sortie ? ».\\n\",\n    \"Objectif Biodiversité\": \"Tu es analyste chez Starquest, pour le fonds Starquest Objectif Biodiversité. Starquest Objectif Biodiversité (Article 9, plus de 220 M€) finance la préservation et la restauration du vivant : du seed au LBO, tickets de 3 à 20 M€, principalement en France et ouvert à l'OCDE (Allemagne, Benelux, Royaume-Uni).\\n\\nL'équipe prépare sa visite du Salon des maires et du Salon de la biodiversité (Paris, Porte de Versailles). L'entreprise ci-dessous y expose. Un premier tri l'a déjà jugée investissable et l'a rattachée à ce fonds. Ta mission : dire si l'équipe doit aller la voir sur son stand, et avec quelle priorité.\\n\\nLa date du jour t'est donnée avec l'entreprise : tous les délais (12 mois, 24 mois, 4 ans) se comptent à partir de cette date. Commence par chercher sur Google, avant de raisonner : ne t'appuie sur aucun fait de mémoire, même si tu crois connaître l'entreprise. Applique ensuite la grille qu'un analyste de Starquest suivrait, en trois questions dans l'ordre. Compte 3 à 5 minutes par entreprise.\\n\\n1. Le profil : l'entreprise correspond-elle au fonds ?\\n\\n* Identifie-la avec certitude : cherche son nom avec son activité ou sa ville, et ouvre son site s'il apparaît. Plusieurs sociétés portent parfois le même nom : retiens celle dont l'activité correspond à un exposant de ces salons (collectivités, environnement, énergie, risques naturels, nature en ville). Si tu ne peux pas l'identifier, c'est PASS (« non identifiée »).\\n* Quelle est sa taille ? Cherche « [nom] chiffre d'affaires 2026 », « [nom] chiffre d'affaires 2025 », « [nom] chiffre d'affaires 2024 » et « [nom] effectif » (presse économique, Pappers, Societe.com, Xerfi, annuaire-entreprises.data.gouv.fr). Retiens le dernier exercice publié et donne toujours son année : si tu trouves plusieurs chiffres, prends celui de l'année la plus récente, jamais une moyenne ni une estimation. S'il a plus de trois ans, dis-le et traite la taille comme un point à vérifier, pas comme un fait acquis. Un objectif ou une prévision (« vise 20 M€ en 2026 ») n'est pas un chiffre d'affaires : cite-le à part dans ton raisonnement. Un chiffre de groupe et un chiffre de filiale ne se mélangent pas : dis lequel tu donnes. Tous les stades sont possibles, du seed au LBO, mais la taille doit permettre un ticket de 3 à 20 M€ : une très petite structure (bureau d'études de quelques personnes, TPE locale) reste en marge (pertinence 1). Une entreprise nettement trop grande (plus de 300 M€ de chiffre d'affaires environ), c'est PASS ; une ETI de 50 à 300 M€ reste possible, avec une pertinence de 2.\\n* Est-elle indépendante ? Cherche « [nom] groupe », « [nom] actionnaire » ou « [nom] rachat ». Une filiale de groupe, une société cotée, une association, une SCOP, une régie ou une structure publique, c'est PASS.\\n* Qui est à son capital ? Cherche « [nom] levée de fonds ». Une levée récente n'est pas un PASS : note le tour, son montant, ses investisseurs et son mois. Elle sert au type de deal, à « Pourquoi les rencontrer » et à la question à poser.\\n* Une donnée seulement introuvable (CA non publié, actionnariat inconnu) n'est pas un PASS : c'est un point à vérifier sur le stand.\\n\\n2. La thèse : son cœur de métier est-il dans une verticale du fonds ?\\n\\n* Verticales du fonds : agriculture régénératrice et agroécologie ; biocontrôle et réduction des pesticides ; protéines alternatives et filières végétales ; dépollution des sols et de l'eau ; génie écologique et restauration ; aquaculture durable et économie de la mer ; forêt-bois et pépinières ; nature en ville.\\n* C'est le cœur de métier qui compte, pas un produit annexe : regarde son site et sa présentation dans la presse. La simple vente de produits de jardinage ou de mobilier, un organisme de qualification, une association : c'est PASS.\\n\\n3. Les preuves : note trois preuves, chacune ✓, D ou ?. Le fonds est classé Article 9 : l'impact est son objectif et doit être mesurable. L'Impact est donc la condition d'accès : sans Impact ✓, l'entreprise ne peut pas être P1 ni P2.\\n\\n* Impact : l'entreprise a-t-elle un impact mesurable au cœur de la verticale ? Cherche ses réalisations (chantiers, installations, volumes). ✓ = un fait précis, sourcé et chiffré sur ce que fait l'entreprise (hectares restaurés ou renaturés, kilomètres de berges ou de cours d'eau, arbres produits ou plantés, volumes de sols ou d'eau dépollués, pesticides évités ; idéalement rattaché à l'une des cinq pressions sur le vivant (changement d'usage des terres, surexploitation, pollutions, espèces invasives, climat)). D = seulement une description commerciale, une promesse (« jusqu'à 30 % d'économies ») ou une activité en partie seulement dans la verticale. ? = rien trouvé.\\n* Traction : ✓ = un chiffre (chiffre d'affaires, effectif, nombre de sites, de clients, de MW) ou un client ou un contrat nommé. D = des clients évoqués sans nom ni chiffre. Un investisseur, une subvention, un prix ou un accélérateur ne comptent pas.\\n* Potentiel : le modèle peut-il absorber un ticket de 3 à 20 M€ ? ✓ = un fait sourcé montrant un actif propre (production végétale, procédé de dépollution, technologie, données, sites de restauration ou de compensation) ou un modèle réplicable et rentable (plusieurs implantations, croissance externe, résultat positif). D = une prestation locale difficile à répliquer, ou un modèle seulement revendiqué. ? = rien trouvé.\\n* Le timing capitalistique (levée récente ou ancienne, LBO de plus de 4 ans, succession du dirigeant, nouveau tour en préparation) ne note pas de preuve : mentionne-le dans « Pourquoi les rencontrer » et sers-t'en pour la question à poser.\\n* Une preuve sans URL ne peut pas être ✓.\\n* Pertinence de 1 à 3 : 3 = au cœur de la thèse et à la bonne taille pour un ticket de ce fonds ; 2 = dans la thèse, mais taille ou modèle à confirmer ; 1 = en marge de la thèse ou probablement trop petite.\\n* Type de deal : le deal le plus probable pour ce fonds, au vu de la taille, du stade et de l'actionnariat (amorçage ou Série A, Série B et plus, capital-développement minoritaire, LBO ou transmission) ; « à déterminer » si les faits manquent.\\n\\n## Ta décision\\nPrends la décision toi-même, avec l'un de ces quatre résultats :\\n- P1 : Impact ✓, Traction ✓, Potentiel ✓ et pertinence 3 ; à voir en priorité sur le salon.\\n- P2 : Impact ✓ et au moins une autre preuve ✓.\\n- À SUIVRE : Impact ✓ seul, ou Impact D avec au moins une autre preuve ✓.\\n- PASS : non à l'étape 1 ou à l'étape 2, entreprise non identifiée, Impact « ? », ou Impact D sans autre preuve ✓. Donne la raison dans `motif_pass`, et dans `etape_pass` l'étape où l'entreprise sort.\\n\\n## Format de réponse\\nFais 4 à 6 recherches ciblées au plus. Arrête de chercher dès que tu peux décider : si c'est un PASS à l'étape 1 ou 2, ne cherche pas les preuves de l'étape 3. Utilise toujours les données les plus récentes que tu trouves : pour chaque fait, garde la source la plus récente et donne sa date. Quand deux sources se contredisent (deux CA différents, par exemple), retiens la plus récente et cite l'autre dans ton raisonnement. Pour chaque fait, donne l'URL complète de la page où tu l'as trouvé, telle qu'elle apparaît dans tes résultats (n'invente jamais une URL). Rédige en français, en phrases courtes.\\n« Pourquoi les rencontrer » tient en une phrase courte et percutante : l'impact, les forces vérifiées, le potentiel et, s'il y en a un, le moment capitalistique (levée, LBO, transmission).\\n« Question à poser » est la question que l'analyste de Starquest posera au dirigeant de l'entreprise, en face à face sur son stand, pour avancer vers une décision d'investissement. Elle part d'un fait trouvé ou d'un point resté à vérifier (taille réelle, rentabilité, actionnariat, besoin de capital et son montant, calendrier, part de l'activité dans la verticale), et appelle une réponse chiffrée ou précise, pas un oui ou un non. Elle ne cite jamais Starquest, ne propose pas d'investir et ne demande pas si l'entreprise « envisage d'ouvrir son capital à un fonds ». Exemples du ton attendu : « Votre CA est passé de 16 à 16,6 M€ : quelle part vient des risques naturels, et quel investissement faudrait-il pour doubler cette activité ? » ; « Le MBO de 2019 a sept ans : comment les actionnaires actuels voient-ils leur sortie ? ».\\n\"\n  }\n};\nreturn [{ json: CONFIG }];\n"
+      },
+      "id": "36ce7b7b-849a-4bf7-87b5-53696242c929",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        12688,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Liste des entreprises à analyser (nom, stand, salon, fonds pressenti à l'étape 1).\n// Exemple : remplacez ces lignes par votre propre liste d'exposants.\nconst ROWS = [\n { \"Entreprise\": \"Exemple Hydro SAS\", \"Stand\": \"7.2 A01\", \"Salon\": \"Maires\", \"Fonds\": \"CCR-F\", \"Priorité précédente\": \"Étape 2\" },\n { \"Entreprise\": \"Exemple Renov Énergie\", \"Stand\": \"7.2 B02\", \"Salon\": \"Maires\", \"Fonds\": \"Protect\", \"Priorité précédente\": \"Étape 2\" },\n { \"Entreprise\": \"Exemple Génie Écologique\", \"Stand\": \"7.1 C03\", \"Salon\": \"Biodiversité\", \"Fonds\": \"Objectif Biodiversité\", \"Priorité précédente\": \"Étape 1 (faux négatif)\" }\n];\nreturn ROWS.map(r => ({ json: r }));\n"
+      },
+      "id": "d6cf80b0-79ab-4f0a-be89-c73c04f3b983",
+      "name": "Entreprises étape 1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        12928,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per company that passed step 2. The fund decided at step 2 chooses the prompt.\nconst cfg = $('Config').first().json;\nconst only = (cfg.only || []).map(String);\nconst rows = $input.all().map(i => i.json).filter(r => !only.length || only.includes(r.Entreprise));\nconst start = Number(cfg.offset) || 0;\nconst end = cfg.limit ? start + Number(cfg.limit) : undefined;\nreturn rows.slice(start, end).map(r => ({ json: { c: { name: r.Entreprise, stand: r.Stand, salon: r.Salon, fonds: r.Fonds, prev: r['Priorité précédente'] || '' } } }));\n"
+      },
+      "id": "06e1abfe-cd07-4e73-8e44-4a3cedaa3847",
+      "name": "Prepare companies",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        13168,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// ---- Shared helpers (prepended to several Code nodes) ----\nfunction geminiJson(res) {\n  if (!res || res.error) {\n    const e = res && res.error;\n    throw new Error('API call: ' + (typeof e === 'string' ? e : ((e && e.message) || JSON.stringify(e))));\n  }\n  const cand = res.candidates && res.candidates[0];\n  if (!cand) throw new Error('Empty response' + (res.promptFeedback ? ': ' + JSON.stringify(res.promptFeedback) : ''));\n  const parts = (cand.content && cand.content.parts) || [];\n  const txt = parts.filter(p => !p.thought).map(p => p.text || '').join('');\n  if (!txt) throw new Error('No text (finishReason: ' + (cand.finishReason || '?') + ')');\n  const i = txt.indexOf('{'), j = txt.lastIndexOf('}');\n  if (i < 0 || j < i) throw new Error('No JSON in answer: ' + txt.slice(0, 120));\n  return JSON.parse(txt.slice(i, j + 1));\n}\nfunction domainOf(s) {\n  return String(s || '').toLowerCase().trim().replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split(/[\\/?#\\s]/)[0];\n}\n// The pages Gemini actually consulted (Google Search results it used, pages it opened).\nfunction consultedSources(res) {\n  const cand = (res && res.candidates && res.candidates[0]) || {};\n  const out = [];\n  const gm = cand.groundingMetadata || {};\n  for (const ch of gm.groundingChunks || []) { const w = ch.web || {}; out.push({ title: w.title || w.domain || 'source', uri: w.uri || '', domain: domainOf(w.domain || w.title) }); }\n  const um = (cand.urlContextMetadata || cand.url_context_metadata || {}).urlMetadata || [];\n  for (const u of um) if (/SUCCESS/.test(u.urlRetrievalStatus || '')) out.push({ title: domainOf(u.retrievedUrl), uri: u.retrievedUrl, domain: domainOf(u.retrievedUrl) });\n  const seen = new Set();\n  return out.filter(x => x.domain && !seen.has(x.domain) && seen.add(x.domain));\n}\nfunction geminiRequest(system, userText, thinking, search) {\n  const r = { systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: userText }] }] };\n  if (search) r.tools = [{ google_search: {} }, { url_context: {} }];\n  if (thinking) r.generationConfig = { thinkingConfig: { thinkingLevel: thinking } };\n  return r;\n}\nconst CATS = ['P1', 'P2', 'À SUIVRE', 'PASS'];\nfunction searchedIn(res) {\n  const gm = (res && res.candidates && res.candidates[0] && res.candidates[0].groundingMetadata) || {};\n  return (gm.webSearchQueries || []).length > 0 || (gm.groundingChunks || []).length > 0;\n}\nfunction routingSchema(funds) {\n  const S = d => ({ type: 'string', description: d });\n  const E = (vals, d) => ({ type: 'string', enum: vals, ...(d ? { description: d } : {}) });\n  const F = Object.keys(funds);\n  return { type: 'object', properties: {\n    identite: S('Nom exact, ville et activité de la société retenue ; « non identifiée » sinon.'),\n    activite: S(\"Ce que l'entreprise vend, et à qui, en une phrase.\"),\n    activite_source: S(\"URL complète de la page qui décrit l'activité, copiée telle quelle ; vide si aucune.\"),\n    fonds: E([...F, 'Hors thèse', 'Non identifiée'], 'Le fonds principal.'),\n    verticale: S('La verticale du fonds choisi qui décrit le cœur de métier ; vide si Hors thèse.'),\n    fonds_secondaire: E([...F, 'Aucun']),\n    justification: S('Pourquoi ce fonds plutôt que les deux autres, en une phrase.'),\n  } };\n}\nfunction analysisSchema(F) {\n  const S = d => ({ type: 'string', description: d });\n  const E = (vals, d) => ({ type: 'string', enum: vals, ...(d ? { description: d } : {}) });\n  const SRC = S('URL complète de la page qui le dit, copiée telle quelle depuis tes résultats ; vide si aucune.');\n  const proof = d => ({ type: 'object', description: d, properties: {\n    statut: E(['✓', 'D', '?']), fait: S('Le fait en quelques mots, avec chiffres et noms ; vide si ?.'), source: SRC,\n    site: S('Nom ou domaine du site (ex. « lejournaldesentreprises.com »).'), date: S('Date du fait ou de la page (mois et année) : garde la source la plus récente ; vide si inconnue.') },\n    required: ['statut', 'fait', 'source', 'site', 'date'] });\n  return { type: 'object', properties: {\n    raisonnement: S('Ton raisonnement sur les trois étapes, 4 à 6 phrases, écrit avant la décision.'),\n    identite: S('Nom exact, ville et activité de la société retenue ; « non identifiée » sinon.'),\n    profil_type: E(['Startup', 'PME', 'ETI', 'Groupe ou filiale', 'Autre', 'Inconnu']),\n    chiffre_affaires: S(\"CA du dernier exercice publié avec son année (ex. « 5,2 M€ (2025) ») : l'année la plus récente trouvée, jamais une estimation ; vide si non trouvé.\"),\n    profil: S('Type, taille et actionnariat en une ligne (ex. « PME familiale, ~40 salariés »).'),\n    profil_source: SRC,\n    verdict_profil: E(['dans le profil', 'hors profil', 'à vérifier']),\n    verticale: E([...F.VERTICALES, 'Hors verticales']),\n    motif_pass: S('Si PASS : la raison factuelle en une phrase (hors profil, hors verticales, non identifiée, ou aucune preuve ✓) ; vide sinon.'),\n    etape_pass: E(['Étape 2', 'Étape 3', ''], \"Si PASS : 'Étape 2' si hors profil, hors verticales ou non identifiée ; 'Étape 3' si l'entreprise passe les étapes 1 et 2 mais n'a aucune preuve ✓. Vide sinon.\"),\n    motif_source: SRC,\n    impact: proof('Preuve Impact (condition d\\'accès : sans ✓, ni P1 ni P2).'), traction: proof('Preuve Traction.'), potentiel: proof('Preuve Potentiel, selon la définition du fonds.'),\n    type_deal: E(['Amorçage / Série A', 'Série B et plus', 'Capital-développement minoritaire', 'LBO / transmission', 'À déterminer'], 'Le deal le plus probable pour ce fonds.'),\n    pertinence: { type: 'integer', minimum: 1, maximum: 3 },\n    pertinence_raison: S('Une phrase.'),\n    categorie: E(CATS),\n    pourquoi: S('« Pourquoi les rencontrer » : une phrase courte et percutante.'),\n    question: S(\"La question que l'analyste posera au dirigeant sur le stand : ancrée dans un fait ou un point à vérifier, appelant une réponse chiffrée ; sans citer Starquest ni proposer d'investir.\"),\n  } };\n}\n\n// Call 1 · Routing: identify the company and choose ONE fund (or Hors thèse) before any profile research.\nconst cfg = $('Config').first().json;\nconst c = $json.c;\nconst salon = c.salon === 'Biodiversité' ? 'Salon de la biodiversité' : c.salon.includes('+') ? 'Salon des maires et Salon de la biodiversité' : 'Salon des maires';\nconst user = [`Entreprise : ${c.name}`, `Exposant au ${salon} (stand ${c.stand})`,\n  \"Cherche d'abord sur Google, puis retourne uniquement l'objet JSON décrit dans tes instructions.\"].join('\\n');\nconst system = cfg.prompts.routage + '\\n\\n## Sortie\\nRetourne un seul objet JSON (aucun texte avant ou après) qui suit ce schéma JSON :\\n' + JSON.stringify(routingSchema(cfg.funds));\nreturn { json: { c: { ...c, salon_label: salon }, request: geminiRequest(system, user, cfg.thinking_level, true) } };\n"
+      },
+      "id": "9e1e310f-b997-4c96-9266-d808c0c47e5d",
+      "name": "Routing request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        13408,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://generativelanguage.googleapis.com/v1beta/models/' + $('Config').first().json.model_analysis + (false ? ':countTokens' : ':generateContent') }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Connection",
+              "value": "close"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(false ? $json.ping : $json.request) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "id": "85feaa09-955b-4b77-ba61-1df3ec19a056",
+      "name": "Gemini · Routing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        13648,
+        336
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "iPxY54zPL5nwKC83",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// ---- Shared helpers (prepended to several Code nodes) ----\nfunction geminiJson(res) {\n  if (!res || res.error) {\n    const e = res && res.error;\n    throw new Error('API call: ' + (typeof e === 'string' ? e : ((e && e.message) || JSON.stringify(e))));\n  }\n  const cand = res.candidates && res.candidates[0];\n  if (!cand) throw new Error('Empty response' + (res.promptFeedback ? ': ' + JSON.stringify(res.promptFeedback) : ''));\n  const parts = (cand.content && cand.content.parts) || [];\n  const txt = parts.filter(p => !p.thought).map(p => p.text || '').join('');\n  if (!txt) throw new Error('No text (finishReason: ' + (cand.finishReason || '?') + ')');\n  const i = txt.indexOf('{'), j = txt.lastIndexOf('}');\n  if (i < 0 || j < i) throw new Error('No JSON in answer: ' + txt.slice(0, 120));\n  return JSON.parse(txt.slice(i, j + 1));\n}\nfunction domainOf(s) {\n  return String(s || '').toLowerCase().trim().replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split(/[\\/?#\\s]/)[0];\n}\n// The pages Gemini actually consulted (Google Search results it used, pages it opened).\nfunction consultedSources(res) {\n  const cand = (res && res.candidates && res.candidates[0]) || {};\n  const out = [];\n  const gm = cand.groundingMetadata || {};\n  for (const ch of gm.groundingChunks || []) { const w = ch.web || {}; out.push({ title: w.title || w.domain || 'source', uri: w.uri || '', domain: domainOf(w.domain || w.title) }); }\n  const um = (cand.urlContextMetadata || cand.url_context_metadata || {}).urlMetadata || [];\n  for (const u of um) if (/SUCCESS/.test(u.urlRetrievalStatus || '')) out.push({ title: domainOf(u.retrievedUrl), uri: u.retrievedUrl, domain: domainOf(u.retrievedUrl) });\n  const seen = new Set();\n  return out.filter(x => x.domain && !seen.has(x.domain) && seen.add(x.domain));\n}\nfunction geminiRequest(system, userText, thinking, search) {\n  const r = { systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: userText }] }] };\n  if (search) r.tools = [{ google_search: {} }, { url_context: {} }];\n  if (thinking) r.generationConfig = { thinkingConfig: { thinkingLevel: thinking } };\n  return r;\n}\nconst CATS = ['P1', 'P2', 'À SUIVRE', 'PASS'];\nfunction searchedIn(res) {\n  const gm = (res && res.candidates && res.candidates[0] && res.candidates[0].groundingMetadata) || {};\n  return (gm.webSearchQueries || []).length > 0 || (gm.groundingChunks || []).length > 0;\n}\nfunction routingSchema(funds) {\n  const S = d => ({ type: 'string', description: d });\n  const E = (vals, d) => ({ type: 'string', enum: vals, ...(d ? { description: d } : {}) });\n  const F = Object.keys(funds);\n  return { type: 'object', properties: {\n    identite: S('Nom exact, ville et activité de la société retenue ; « non identifiée » sinon.'),\n    activite: S(\"Ce que l'entreprise vend, et à qui, en une phrase.\"),\n    activite_source: S(\"URL complète de la page qui décrit l'activité, copiée telle quelle ; vide si aucune.\"),\n    fonds: E([...F, 'Hors thèse', 'Non identifiée'], 'Le fonds principal.'),\n    verticale: S('La verticale du fonds choisi qui décrit le cœur de métier ; vide si Hors thèse.'),\n    fonds_secondaire: E([...F, 'Aucun']),\n    justification: S('Pourquoi ce fonds plutôt que les deux autres, en une phrase.'),\n  } };\n}\nfunction analysisSchema(F) {\n  const S = d => ({ type: 'string', description: d });\n  const E = (vals, d) => ({ type: 'string', enum: vals, ...(d ? { description: d } : {}) });\n  const SRC = S('URL complète de la page qui le dit, copiée telle quelle depuis tes résultats ; vide si aucune.');\n  const proof = d => ({ type: 'object', description: d, properties: {\n    statut: E(['✓', 'D', '?']), fait: S('Le fait en quelques mots, avec chiffres et noms ; vide si ?.'), source: SRC,\n    site: S('Nom ou domaine du site (ex. « lejournaldesentreprises.com »).'), date: S('Date du fait ou de la page (mois et année) : garde la source la plus récente ; vide si inconnue.') },\n    required: ['statut', 'fait', 'source', 'site', 'date'] });\n  return { type: 'object', properties: {\n    raisonnement: S('Ton raisonnement sur les trois étapes, 4 à 6 phrases, écrit avant la décision.'),\n    identite: S('Nom exact, ville et activité de la société retenue ; « non identifiée » sinon.'),\n    profil_type: E(['Startup', 'PME', 'ETI', 'Groupe ou filiale', 'Autre', 'Inconnu']),\n    chiffre_affaires: S(\"CA du dernier exercice publié avec son année (ex. « 5,2 M€ (2025) ») : l'année la plus récente trouvée, jamais une estimation ; vide si non trouvé.\"),\n    profil: S('Type, taille et actionnariat en une ligne (ex. « PME familiale, ~40 salariés »).'),\n    profil_source: SRC,\n    verdict_profil: E(['dans le profil', 'hors profil', 'à vérifier']),\n    verticale: E([...F.VERTICALES, 'Hors verticales']),\n    motif_pass: S('Si PASS : la raison factuelle en une phrase (hors profil, hors verticales, non identifiée, ou aucune preuve ✓) ; vide sinon.'),\n    etape_pass: E(['Étape 2', 'Étape 3', ''], \"Si PASS : 'Étape 2' si hors profil, hors verticales ou non identifiée ; 'Étape 3' si l'entreprise passe les étapes 1 et 2 mais n'a aucune preuve ✓. Vide sinon.\"),\n    motif_source: SRC,\n    impact: proof('Preuve Impact (condition d\\'accès : sans ✓, ni P1 ni P2).'), traction: proof('Preuve Traction.'), potentiel: proof('Preuve Potentiel, selon la définition du fonds.'),\n    type_deal: E(['Amorçage / Série A', 'Série B et plus', 'Capital-développement minoritaire', 'LBO / transmission', 'À déterminer'], 'Le deal le plus probable pour ce fonds.'),\n    pertinence: { type: 'integer', minimum: 1, maximum: 3 },\n    pertinence_raison: S('Une phrase.'),\n    categorie: E(CATS),\n    pourquoi: S('« Pourquoi les rencontrer » : une phrase courte et percutante.'),\n    question: S(\"La question que l'analyste posera au dirigeant sur le stand : ancrée dans un fait ou un point à vérifier, appelant une réponse chiffrée ; sans citer Starquest ni proposer d'investir.\"),\n  } };\n}\n\n// Second attempt for calls that failed (e.g. connection closed). Good answers go through a free,\n// instant countTokens call so the chain stays one item per company.\nconst r = $json;\nconst q = $('Routing request').item.json;\nconst cand = r && r.candidates && r.candidates[0];\nconst ok = !!q.skip || (!!cand && (!false || searchedIn(r)));\nlet request = q.request || null;\nif (!ok && request) {\n  request = JSON.parse(JSON.stringify(request));\n  request.contents[0].parts.push({ text: \"Cherche sur Google puis réponds uniquement avec le JSON demandé.\" });\n}\nreturn { json: { ok, skip: !!q.skip, first: ok ? r : null, first_raw: cand ? r : null, request, ping: { contents: [{ role: 'user', parts: [{ text: 'ok' }] }] } } };\n"
+      },
+      "id": "6f5457dc-9fd7-4ed9-954b-6b3967ca023d",
+      "name": "Routing · retry check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        13776,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://generativelanguage.googleapis.com/v1beta/models/' + $('Config').first().json.model_analysis + ($json.ok ? ':countTokens' : ':generateContent') }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Connection",
+              "value": "close"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.ok ? $json.ping : $json.request) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "id": "522693a3-e55e-497a-97d9-5f749fe7efb1",
+      "name": "Routing · 2nd try",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        13888,
+        704
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "iPxY54zPL5nwKC83",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// ---- Shared helpers (prepended to several Code nodes) ----\nfunction geminiJson(res) {\n  if (!res || res.error) {\n    const e = res && res.error;\n    throw new Error('API call: ' + (typeof e === 'string' ? e : ((e && e.message) || JSON.stringify(e))));\n  }\n  const cand = res.candidates && res.candidates[0];\n  if (!cand) throw new Error('Empty response' + (res.promptFeedback ? ': ' + JSON.stringify(res.promptFeedback) : ''));\n  const parts = (cand.content && cand.content.parts) || [];\n  const txt = parts.filter(p => !p.thought).map(p => p.text || '').join('');\n  if (!txt) throw new Error('No text (finishReason: ' + (cand.finishReason || '?') + ')');\n  const i = txt.indexOf('{'), j = txt.lastIndexOf('}');\n  if (i < 0 || j < i) throw new Error('No JSON in answer: ' + txt.slice(0, 120));\n  return JSON.parse(txt.slice(i, j + 1));\n}\nfunction domainOf(s) {\n  return String(s || '').toLowerCase().trim().replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split(/[\\/?#\\s]/)[0];\n}\n// The pages Gemini actually consulted (Google Search results it used, pages it opened).\nfunction consultedSources(res) {\n  const cand = (res && res.candidates && res.candidates[0]) || {};\n  const out = [];\n  const gm = cand.groundingMetadata || {};\n  for (const ch of gm.groundingChunks || []) { const w = ch.web || {}; out.push({ title: w.title || w.domain || 'source', uri: w.uri || '', domain: domainOf(w.domain || w.title) }); }\n  const um = (cand.urlContextMetadata || cand.url_context_metadata || {}).urlMetadata || [];\n  for (const u of um) if (/SUCCESS/.test(u.urlRetrievalStatus || '')) out.push({ title: domainOf(u.retrievedUrl), uri: u.retrievedUrl, domain: domainOf(u.retrievedUrl) });\n  const seen = new Set();\n  return out.filter(x => x.domain && !seen.has(x.domain) && seen.add(x.domain));\n}\nfunction geminiRequest(system, userText, thinking, search) {\n  const r = { systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: userText }] }] };\n  if (search) r.tools = [{ google_search: {} }, { url_context: {} }];\n  if (thinking) r.generationConfig = { thinkingConfig: { thinkingLevel: thinking } };\n  return r;\n}\nconst CATS = ['P1', 'P2', 'À SUIVRE', 'PASS'];\nfunction searchedIn(res) {\n  const gm = (res && res.candidates && res.candidates[0] && res.candidates[0].groundingMetadata) || {};\n  return (gm.webSearchQueries || []).length > 0 || (gm.groundingChunks || []).length > 0;\n}\nfunction routingSchema(funds) {\n  const S = d => ({ type: 'string', description: d });\n  const E = (vals, d) => ({ type: 'string', enum: vals, ...(d ? { description: d } : {}) });\n  const F = Object.keys(funds);\n  return { type: 'object', properties: {\n    identite: S('Nom exact, ville et activité de la société retenue ; « non identifiée » sinon.'),\n    activite: S(\"Ce que l'entreprise vend, et à qui, en une phrase.\"),\n    activite_source: S(\"URL complète de la page qui décrit l'activité, copiée telle quelle ; vide si aucune.\"),\n    fonds: E([...F, 'Hors thèse', 'Non identifiée'], 'Le fonds principal.'),\n    verticale: S('La verticale du fonds choisi qui décrit le cœur de métier ; vide si Hors thèse.'),\n    fonds_secondaire: E([...F, 'Aucun']),\n    justification: S('Pourquoi ce fonds plutôt que les deux autres, en une phrase.'),\n  } };\n}\nfunction analysisSchema(F) {\n  const S = d => ({ type: 'string', description: d });\n  const E = (vals, d) => ({ type: 'string', enum: vals, ...(d ? { description: d } : {}) });\n  const SRC = S('URL complète de la page qui le dit, copiée telle quelle depuis tes résultats ; vide si aucune.');\n  const proof = d => ({ type: 'object', description: d, properties: {\n    statut: E(['✓', 'D', '?']), fait: S('Le fait en quelques mots, avec chiffres et noms ; vide si ?.'), source: SRC,\n    site: S('Nom ou domaine du site (ex. « lejournaldesentreprises.com »).'), date: S('Date du fait ou de la page (mois et année) : garde la source la plus récente ; vide si inconnue.') },\n    required: ['statut', 'fait', 'source', 'site', 'date'] });\n  return { type: 'object', properties: {\n    raisonnement: S('Ton raisonnement sur les trois étapes, 4 à 6 phrases, écrit avant la décision.'),\n    identite: S('Nom exact, ville et activité de la société retenue ; « non identifiée » sinon.'),\n    profil_type: E(['Startup', 'PME', 'ETI', 'Groupe ou filiale', 'Autre', 'Inconnu']),\n    chiffre_affaires: S(\"CA du dernier exercice publié avec son année (ex. « 5,2 M€ (2025) ») : l'année la plus récente trouvée, jamais une estimation ; vide si non trouvé.\"),\n    profil: S('Type, taille et actionnariat en une ligne (ex. « PME familiale, ~40 salariés »).'),\n    profil_source: SRC,\n    verdict_profil: E(['dans le profil', 'hors profil', 'à vérifier']),\n    verticale: E([...F.VERTICALES, 'Hors verticales']),\n    motif_pass: S('Si PASS : la raison factuelle en une phrase (hors profil, hors verticales, non identifiée, ou aucune preuve ✓) ; vide sinon.'),\n    etape_pass: E(['Étape 2', 'Étape 3', ''], \"Si PASS : 'Étape 2' si hors profil, hors verticales ou non identifiée ; 'Étape 3' si l'entreprise passe les étapes 1 et 2 mais n'a aucune preuve ✓. Vide sinon.\"),\n    motif_source: SRC,\n    impact: proof('Preuve Impact (condition d\\'accès : sans ✓, ni P1 ni P2).'), traction: proof('Preuve Traction.'), potentiel: proof('Preuve Potentiel, selon la définition du fonds.'),\n    type_deal: E(['Amorçage / Série A', 'Série B et plus', 'Capital-développement minoritaire', 'LBO / transmission', 'À déterminer'], 'Le deal le plus probable pour ce fonds.'),\n    pertinence: { type: 'integer', minimum: 1, maximum: 3 },\n    pertinence_raison: S('Une phrase.'),\n    categorie: E(CATS),\n    pourquoi: S('« Pourquoi les rencontrer » : une phrase courte et percutante.'),\n    question: S(\"La question que l'analyste posera au dirigeant sur le stand : ancrée dans un fait ou un point à vérifier, appelant une réponse chiffrée ; sans citer Starquest ni proposer d'investir.\"),\n  } };\n}\n\n// Reads the routing: the fund chosen by the AI replaces the step-1 label (kept for the audit).\nconst cfg = $('Config').first().json;\nconst c = JSON.parse(JSON.stringify($('Routing request').item.json.c));\nconst prev = $('Routing · retry check').item.json;\nlet res = prev.ok ? prev.first : $json;\nlet r = null, error = '';\ntry { r = geminiJson(res); } catch (e) {\n  error = e.message;\n  if (!prev.ok && prev.first_raw) { try { r = geminiJson(prev.first_raw); error = ''; } catch (e2) {} }\n}\nc.fonds_etape1 = c.fonds;\nc.routing = r;\nc.routing_error = error;\nif (r && cfg.funds[r.fonds]) c.fonds = r.fonds;\nreturn { json: { c } };\n"
+      },
+      "id": "09de4642-f484-4099-aa18-ac7b5dc2ee96",
+      "name": "Read routing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        14128,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// ---- Shared helpers (prepended to several Code nodes) ----\nfunction geminiJson(res) {\n  if (!res || res.error) {\n    const e = res && res.error;\n    throw new Error('API call: ' + (typeof e === 'string' ? e : ((e && e.message) || JSON.stringify(e))));\n  }\n  const cand = res.candidates && res.candidates[0];\n  if (!cand) throw new Error('Empty response' + (res.promptFeedback ? ': ' + JSON.stringify(res.promptFeedback) : ''));\n  const parts = (cand.content && cand.content.parts) || [];\n  const txt = parts.filter(p => !p.thought).map(p => p.text || '').join('');\n  if (!txt) throw new Error('No text (finishReason: ' + (cand.finishReason || '?') + ')');\n  const i = txt.indexOf('{'), j = txt.lastIndexOf('}');\n  if (i < 0 || j < i) throw new Error('No JSON in answer: ' + txt.slice(0, 120));\n  return JSON.parse(txt.slice(i, j + 1));\n}\nfunction domainOf(s) {\n  return String(s || '').toLowerCase().trim().replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split(/[\\/?#\\s]/)[0];\n}\n// The pages Gemini actually consulted (Google Search results it used, pages it opened).\nfunction consultedSources(res) {\n  const cand = (res && res.candidates && res.candidates[0]) || {};\n  const out = [];\n  const gm = cand.groundingMetadata || {};\n  for (const ch of gm.groundingChunks || []) { const w = ch.web || {}; out.push({ title: w.title || w.domain || 'source', uri: w.uri || '', domain: domainOf(w.domain || w.title) }); }\n  const um = (cand.urlContextMetadata || cand.url_context_metadata || {}).urlMetadata || [];\n  for (const u of um) if (/SUCCESS/.test(u.urlRetrievalStatus || '')) out.push({ title: domainOf(u.retrievedUrl), uri: u.retrievedUrl, domain: domainOf(u.retrievedUrl) });\n  const seen = new Set();\n  return out.filter(x => x.domain && !seen.has(x.domain) && seen.add(x.domain));\n}\nfunction geminiRequest(system, userText, thinking, search) {\n  const r = { systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: userText }] }] };\n  if (search) r.tools = [{ google_search: {} }, { url_context: {} }];\n  if (thinking) r.generationConfig = { thinkingConfig: { thinkingLevel: thinking } };\n  return r;\n}\nconst CATS = ['P1', 'P2', 'À SUIVRE', 'PASS'];\nfunction searchedIn(res) {\n  const gm = (res && res.candidates && res.candidates[0] && res.candidates[0].groundingMetadata) || {};\n  return (gm.webSearchQueries || []).length > 0 || (gm.groundingChunks || []).length > 0;\n}\nfunction routingSchema(funds) {\n  const S = d => ({ type: 'string', description: d });\n  const E = (vals, d) => ({ type: 'string', enum: vals, ...(d ? { description: d } : {}) });\n  const F = Object.keys(funds);\n  return { type: 'object', properties: {\n    identite: S('Nom exact, ville et activité de la société retenue ; « non identifiée » sinon.'),\n    activite: S(\"Ce que l'entreprise vend, et à qui, en une phrase.\"),\n    activite_source: S(\"URL complète de la page qui décrit l'activité, copiée telle quelle ; vide si aucune.\"),\n    fonds: E([...F, 'Hors thèse', 'Non identifiée'], 'Le fonds principal.'),\n    verticale: S('La verticale du fonds choisi qui décrit le cœur de métier ; vide si Hors thèse.'),\n    fonds_secondaire: E([...F, 'Aucun']),\n    justification: S('Pourquoi ce fonds plutôt que les deux autres, en une phrase.'),\n  } };\n}\nfunction analysisSchema(F) {\n  const S = d => ({ type: 'string', description: d });\n  const E = (vals, d) => ({ type: 'string', enum: vals, ...(d ? { description: d } : {}) });\n  const SRC = S('URL complète de la page qui le dit, copiée telle quelle depuis tes résultats ; vide si aucune.');\n  const proof = d => ({ type: 'object', description: d, properties: {\n    statut: E(['✓', 'D', '?']), fait: S('Le fait en quelques mots, avec chiffres et noms ; vide si ?.'), source: SRC,\n    site: S('Nom ou domaine du site (ex. « lejournaldesentreprises.com »).'), date: S('Date du fait ou de la page (mois et année) : garde la source la plus récente ; vide si inconnue.') },\n    required: ['statut', 'fait', 'source', 'site', 'date'] });\n  return { type: 'object', properties: {\n    raisonnement: S('Ton raisonnement sur les trois étapes, 4 à 6 phrases, écrit avant la décision.'),\n    identite: S('Nom exact, ville et activité de la société retenue ; « non identifiée » sinon.'),\n    profil_type: E(['Startup', 'PME', 'ETI', 'Groupe ou filiale', 'Autre', 'Inconnu']),\n    chiffre_affaires: S(\"CA du dernier exercice publié avec son année (ex. « 5,2 M€ (2025) ») : l'année la plus récente trouvée, jamais une estimation ; vide si non trouvé.\"),\n    profil: S('Type, taille et actionnariat en une ligne (ex. « PME familiale, ~40 salariés »).'),\n    profil_source: SRC,\n    verdict_profil: E(['dans le profil', 'hors profil', 'à vérifier']),\n    verticale: E([...F.VERTICALES, 'Hors verticales']),\n    motif_pass: S('Si PASS : la raison factuelle en une phrase (hors profil, hors verticales, non identifiée, ou aucune preuve ✓) ; vide sinon.'),\n    etape_pass: E(['Étape 2', 'Étape 3', ''], \"Si PASS : 'Étape 2' si hors profil, hors verticales ou non identifiée ; 'Étape 3' si l'entreprise passe les étapes 1 et 2 mais n'a aucune preuve ✓. Vide sinon.\"),\n    motif_source: SRC,\n    impact: proof('Preuve Impact (condition d\\'accès : sans ✓, ni P1 ni P2).'), traction: proof('Preuve Traction.'), potentiel: proof('Preuve Potentiel, selon la définition du fonds.'),\n    type_deal: E(['Amorçage / Série A', 'Série B et plus', 'Capital-développement minoritaire', 'LBO / transmission', 'À déterminer'], 'Le deal le plus probable pour ce fonds.'),\n    pertinence: { type: 'integer', minimum: 1, maximum: 3 },\n    pertinence_raison: S('Une phrase.'),\n    categorie: E(CATS),\n    pourquoi: S('« Pourquoi les rencontrer » : une phrase courte et percutante.'),\n    question: S(\"La question que l'analyste posera au dirigeant sur le stand : ancrée dans un fait ou un point à vérifier, appelant une réponse chiffrée ; sans citer Starquest ni proposer d'investir.\"),\n  } };\n}\n\n// Call 2 · Analysis with the prompt of the fund chosen at routing. Google Search is on.\nconst cfg = $('Config').first().json;\nconst c = $json.c;\nconst r = c.routing;\n// Out of thesis or not identified at routing: no analysis call (a free countTokens ping keeps one item per company).\nif (!r || !cfg.funds[r.fonds]) return { json: { c, skip: true, ping: { contents: [{ role: 'user', parts: [{ text: 'ok' }] }] } } };\nconst prompt = cfg.prompts[c.fonds];\nconst salon = c.salon_label;\n// Today's date, so that \"less than 12 months\" or \"less than 24 months\" is computed the same way on every run.\nconst today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });\nconst user = [`Date du jour : ${today}`, `Entreprise : ${c.name}`, `Exposant au ${salon} (stand ${c.stand})`, `Fonds retenu à l'étape précédente : ${c.fonds} (verticale : ${r.verticale}${r.fonds_secondaire && r.fonds_secondaire !== 'Aucun' ? ' ; fonds secondaire : ' + r.fonds_secondaire : ''})`,\n  `Identification déjà faite (à confirmer) : ${r.identite} — ${r.activite}${r.activite_source ? ' (' + r.activite_source + ')' : ''}`,\n  \"Applique uniquement les critères de ce fonds. L'identification est faite : ne relance pas de recherche pour identifier l'entreprise, sauf si elle te paraît fausse ; consacre tes recherches à la taille, à l'actionnariat et aux preuves.\",\n  \"Cherche d'abord sur Google, puis retourne uniquement l'objet JSON décrit dans tes instructions.\"].join('\\n');\nconst system = prompt + '\\n\\n## Sortie\\nRetourne un seul objet JSON (aucun texte avant ou après) qui suit ce schéma JSON :\\n' + JSON.stringify(analysisSchema(cfg.funds[c.fonds]));\nreturn { json: { c, request: geminiRequest(system, user, cfg.thinking_level, true) } };\n"
+      },
+      "id": "91dff018-2a6e-4c5f-83e5-bcfec84c5fe5",
+      "name": "Analysis request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        14368,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://generativelanguage.googleapis.com/v1beta/models/' + $('Config').first().json.model_analysis + ($json.skip ? ':countTokens' : ':generateContent') }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Connection",
+              "value": "close"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.skip ? $json.ping : $json.request) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "id": "e20b751a-1ecc-4ba4-a31c-9e74df8f1b1b",
+      "name": "Gemini · Research & analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        14608,
+        336
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "iPxY54zPL5nwKC83",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// ---- Shared helpers (prepended to several Code nodes) ----\nfunction geminiJson(res) {\n  if (!res || res.error) {\n    const e = res && res.error;\n    throw new Error('API call: ' + (typeof e === 'string' ? e : ((e && e.message) || JSON.stringify(e))));\n  }\n  const cand = res.candidates && res.candidates[0];\n  if (!cand) throw new Error('Empty response' + (res.promptFeedback ? ': ' + JSON.stringify(res.promptFeedback) : ''));\n  const parts = (cand.content && cand.content.parts) || [];\n  const txt = parts.filter(p => !p.thought).map(p => p.text || '').join('');\n  if (!txt) throw new Error('No text (finishReason: ' + (cand.finishReason || '?') + ')');\n  const i = txt.indexOf('{'), j = txt.lastIndexOf('}');\n  if (i < 0 || j < i) throw new Error('No JSON in answer: ' + txt.slice(0, 120));\n  return JSON.parse(txt.slice(i, j + 1));\n}\nfunction domainOf(s) {\n  return String(s || '').toLowerCase().trim().replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split(/[\\/?#\\s]/)[0];\n}\n// The pages Gemini actually consulted (Google Search results it used, pages it opened).\nfunction consultedSources(res) {\n  const cand = (res && res.candidates && res.candidates[0]) || {};\n  const out = [];\n  const gm = cand.groundingMetadata || {};\n  for (const ch of gm.groundingChunks || []) { const w = ch.web || {}; out.push({ title: w.title || w.domain || 'source', uri: w.uri || '', domain: domainOf(w.domain || w.title) }); }\n  const um = (cand.urlContextMetadata || cand.url_context_metadata || {}).urlMetadata || [];\n  for (const u of um) if (/SUCCESS/.test(u.urlRetrievalStatus || '')) out.push({ title: domainOf(u.retrievedUrl), uri: u.retrievedUrl, domain: domainOf(u.retrievedUrl) });\n  const seen = new Set();\n  return out.filter(x => x.domain && !seen.has(x.domain) && seen.add(x.domain));\n}\nfunction geminiRequest(system, userText, thinking, search) {\n  const r = { systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: userText }] }] };\n  if (search) r.tools = [{ google_search: {} }, { url_context: {} }];\n  if (thinking) r.generationConfig = { thinkingConfig: { thinkingLevel: thinking } };\n  return r;\n}\nconst CATS = ['P1', 'P2', 'À SUIVRE', 'PASS'];\nfunction searchedIn(res) {\n  const gm = (res && res.candidates && res.candidates[0] && res.candidates[0].groundingMetadata) || {};\n  return (gm.webSearchQueries || []).length > 0 || (gm.groundingChunks || []).length > 0;\n}\nfunction routingSchema(funds) {\n  const S = d => ({ type: 'string', description: d });\n  const E = (vals, d) => ({ type: 'string', enum: vals, ...(d ? { description: d } : {}) });\n  const F = Object.keys(funds);\n  return { type: 'object', properties: {\n    identite: S('Nom exact, ville et activité de la société retenue ; « non identifiée » sinon.'),\n    activite: S(\"Ce que l'entreprise vend, et à qui, en une phrase.\"),\n    activite_source: S(\"URL complète de la page qui décrit l'activité, copiée telle quelle ; vide si aucune.\"),\n    fonds: E([...F, 'Hors thèse', 'Non identifiée'], 'Le fonds principal.'),\n    verticale: S('La verticale du fonds choisi qui décrit le cœur de métier ; vide si Hors thèse.'),\n    fonds_secondaire: E([...F, 'Aucun']),\n    justification: S('Pourquoi ce fonds plutôt que les deux autres, en une phrase.'),\n  } };\n}\nfunction analysisSchema(F) {\n  const S = d => ({ type: 'string', description: d });\n  const E = (vals, d) => ({ type: 'string', enum: vals, ...(d ? { description: d } : {}) });\n  const SRC = S('URL complète de la page qui le dit, copiée telle quelle depuis tes résultats ; vide si aucune.');\n  const proof = d => ({ type: 'object', description: d, properties: {\n    statut: E(['✓', 'D', '?']), fait: S('Le fait en quelques mots, avec chiffres et noms ; vide si ?.'), source: SRC,\n    site: S('Nom ou domaine du site (ex. « lejournaldesentreprises.com »).'), date: S('Date du fait ou de la page (mois et année) : garde la source la plus récente ; vide si inconnue.') },\n    required: ['statut', 'fait', 'source', 'site', 'date'] });\n  return { type: 'object', properties: {\n    raisonnement: S('Ton raisonnement sur les trois étapes, 4 à 6 phrases, écrit avant la décision.'),\n    identite: S('Nom exact, ville et activité de la société retenue ; « non identifiée » sinon.'),\n    profil_type: E(['Startup', 'PME', 'ETI', 'Groupe ou filiale', 'Autre', 'Inconnu']),\n    chiffre_affaires: S(\"CA du dernier exercice publié avec son année (ex. « 5,2 M€ (2025) ») : l'année la plus récente trouvée, jamais une estimation ; vide si non trouvé.\"),\n    profil: S('Type, taille et actionnariat en une ligne (ex. « PME familiale, ~40 salariés »).'),\n    profil_source: SRC,\n    verdict_profil: E(['dans le profil', 'hors profil', 'à vérifier']),\n    verticale: E([...F.VERTICALES, 'Hors verticales']),\n    motif_pass: S('Si PASS : la raison factuelle en une phrase (hors profil, hors verticales, non identifiée, ou aucune preuve ✓) ; vide sinon.'),\n    etape_pass: E(['Étape 2', 'Étape 3', ''], \"Si PASS : 'Étape 2' si hors profil, hors verticales ou non identifiée ; 'Étape 3' si l'entreprise passe les étapes 1 et 2 mais n'a aucune preuve ✓. Vide sinon.\"),\n    motif_source: SRC,\n    impact: proof('Preuve Impact (condition d\\'accès : sans ✓, ni P1 ni P2).'), traction: proof('Preuve Traction.'), potentiel: proof('Preuve Potentiel, selon la définition du fonds.'),\n    type_deal: E(['Amorçage / Série A', 'Série B et plus', 'Capital-développement minoritaire', 'LBO / transmission', 'À déterminer'], 'Le deal le plus probable pour ce fonds.'),\n    pertinence: { type: 'integer', minimum: 1, maximum: 3 },\n    pertinence_raison: S('Une phrase.'),\n    categorie: E(CATS),\n    pourquoi: S('« Pourquoi les rencontrer » : une phrase courte et percutante.'),\n    question: S(\"La question que l'analyste posera au dirigeant sur le stand : ancrée dans un fait ou un point à vérifier, appelant une réponse chiffrée ; sans citer Starquest ni proposer d'investir.\"),\n  } };\n}\n\n// Second attempt for calls that failed (e.g. connection closed). Good answers go through a free,\n// instant countTokens call so the chain stays one item per company.\nconst r = $json;\nconst q = $('Analysis request').item.json;\nconst cand = r && r.candidates && r.candidates[0];\nconst ok = !!q.skip || (!!cand && (!false || searchedIn(r)));\nlet request = q.request || null;\nif (!ok && request) {\n  request = JSON.parse(JSON.stringify(request));\n  request.contents[0].parts.push({ text: \"Cherche sur Google puis réponds uniquement avec le JSON demandé.\" });\n}\nreturn { json: { ok, skip: !!q.skip, first: ok ? r : null, first_raw: cand ? r : null, request, ping: { contents: [{ role: 'user', parts: [{ text: 'ok' }] }] } } };\n"
+      },
+      "id": "cfe3bb63-0acb-45bf-97bb-0c89469b8885",
+      "name": "Analysis · retry check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        14736,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://generativelanguage.googleapis.com/v1beta/models/' + $('Config').first().json.model_analysis + ($json.ok ? ':countTokens' : ':generateContent') }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Connection",
+              "value": "close"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.ok ? $json.ping : $json.request) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "id": "daad0b77-35c8-4d99-96f0-3e6f8550a937",
+      "name": "Analysis · 2nd try",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        14848,
+        704
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "iPxY54zPL5nwKC83",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// ---- Shared helpers (prepended to several Code nodes) ----\nfunction geminiJson(res) {\n  if (!res || res.error) {\n    const e = res && res.error;\n    throw new Error('API call: ' + (typeof e === 'string' ? e : ((e && e.message) || JSON.stringify(e))));\n  }\n  const cand = res.candidates && res.candidates[0];\n  if (!cand) throw new Error('Empty response' + (res.promptFeedback ? ': ' + JSON.stringify(res.promptFeedback) : ''));\n  const parts = (cand.content && cand.content.parts) || [];\n  const txt = parts.filter(p => !p.thought).map(p => p.text || '').join('');\n  if (!txt) throw new Error('No text (finishReason: ' + (cand.finishReason || '?') + ')');\n  const i = txt.indexOf('{'), j = txt.lastIndexOf('}');\n  if (i < 0 || j < i) throw new Error('No JSON in answer: ' + txt.slice(0, 120));\n  return JSON.parse(txt.slice(i, j + 1));\n}\nfunction domainOf(s) {\n  return String(s || '').toLowerCase().trim().replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split(/[\\/?#\\s]/)[0];\n}\n// The pages Gemini actually consulted (Google Search results it used, pages it opened).\nfunction consultedSources(res) {\n  const cand = (res && res.candidates && res.candidates[0]) || {};\n  const out = [];\n  const gm = cand.groundingMetadata || {};\n  for (const ch of gm.groundingChunks || []) { const w = ch.web || {}; out.push({ title: w.title || w.domain || 'source', uri: w.uri || '', domain: domainOf(w.domain || w.title) }); }\n  const um = (cand.urlContextMetadata || cand.url_context_metadata || {}).urlMetadata || [];\n  for (const u of um) if (/SUCCESS/.test(u.urlRetrievalStatus || '')) out.push({ title: domainOf(u.retrievedUrl), uri: u.retrievedUrl, domain: domainOf(u.retrievedUrl) });\n  const seen = new Set();\n  return out.filter(x => x.domain && !seen.has(x.domain) && seen.add(x.domain));\n}\nfunction geminiRequest(system, userText, thinking, search) {\n  const r = { systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: userText }] }] };\n  if (search) r.tools = [{ google_search: {} }, { url_context: {} }];\n  if (thinking) r.generationConfig = { thinkingConfig: { thinkingLevel: thinking } };\n  return r;\n}\nconst CATS = ['P1', 'P2', 'À SUIVRE', 'PASS'];\nfunction searchedIn(res) {\n  const gm = (res && res.candidates && res.candidates[0] && res.candidates[0].groundingMetadata) || {};\n  return (gm.webSearchQueries || []).length > 0 || (gm.groundingChunks || []).length > 0;\n}\nfunction routingSchema(funds) {\n  const S = d => ({ type: 'string', description: d });\n  const E = (vals, d) => ({ type: 'string', enum: vals, ...(d ? { description: d } : {}) });\n  const F = Object.keys(funds);\n  return { type: 'object', properties: {\n    identite: S('Nom exact, ville et activité de la société retenue ; « non identifiée » sinon.'),\n    activite: S(\"Ce que l'entreprise vend, et à qui, en une phrase.\"),\n    activite_source: S(\"URL complète de la page qui décrit l'activité, copiée telle quelle ; vide si aucune.\"),\n    fonds: E([...F, 'Hors thèse', 'Non identifiée'], 'Le fonds principal.'),\n    verticale: S('La verticale du fonds choisi qui décrit le cœur de métier ; vide si Hors thèse.'),\n    fonds_secondaire: E([...F, 'Aucun']),\n    justification: S('Pourquoi ce fonds plutôt que les deux autres, en une phrase.'),\n  } };\n}\nfunction analysisSchema(F) {\n  const S = d => ({ type: 'string', description: d });\n  const E = (vals, d) => ({ type: 'string', enum: vals, ...(d ? { description: d } : {}) });\n  const SRC = S('URL complète de la page qui le dit, copiée telle quelle depuis tes résultats ; vide si aucune.');\n  const proof = d => ({ type: 'object', description: d, properties: {\n    statut: E(['✓', 'D', '?']), fait: S('Le fait en quelques mots, avec chiffres et noms ; vide si ?.'), source: SRC,\n    site: S('Nom ou domaine du site (ex. « lejournaldesentreprises.com »).'), date: S('Date du fait ou de la page (mois et année) : garde la source la plus récente ; vide si inconnue.') },\n    required: ['statut', 'fait', 'source', 'site', 'date'] });\n  return { type: 'object', properties: {\n    raisonnement: S('Ton raisonnement sur les trois étapes, 4 à 6 phrases, écrit avant la décision.'),\n    identite: S('Nom exact, ville et activité de la société retenue ; « non identifiée » sinon.'),\n    profil_type: E(['Startup', 'PME', 'ETI', 'Groupe ou filiale', 'Autre', 'Inconnu']),\n    chiffre_affaires: S(\"CA du dernier exercice publié avec son année (ex. « 5,2 M€ (2025) ») : l'année la plus récente trouvée, jamais une estimation ; vide si non trouvé.\"),\n    profil: S('Type, taille et actionnariat en une ligne (ex. « PME familiale, ~40 salariés »).'),\n    profil_source: SRC,\n    verdict_profil: E(['dans le profil', 'hors profil', 'à vérifier']),\n    verticale: E([...F.VERTICALES, 'Hors verticales']),\n    motif_pass: S('Si PASS : la raison factuelle en une phrase (hors profil, hors verticales, non identifiée, ou aucune preuve ✓) ; vide sinon.'),\n    etape_pass: E(['Étape 2', 'Étape 3', ''], \"Si PASS : 'Étape 2' si hors profil, hors verticales ou non identifiée ; 'Étape 3' si l'entreprise passe les étapes 1 et 2 mais n'a aucune preuve ✓. Vide sinon.\"),\n    motif_source: SRC,\n    impact: proof('Preuve Impact (condition d\\'accès : sans ✓, ni P1 ni P2).'), traction: proof('Preuve Traction.'), potentiel: proof('Preuve Potentiel, selon la définition du fonds.'),\n    type_deal: E(['Amorçage / Série A', 'Série B et plus', 'Capital-développement minoritaire', 'LBO / transmission', 'À déterminer'], 'Le deal le plus probable pour ce fonds.'),\n    pertinence: { type: 'integer', minimum: 1, maximum: 3 },\n    pertinence_raison: S('Une phrase.'),\n    categorie: E(CATS),\n    pourquoi: S('« Pourquoi les rencontrer » : une phrase courte et percutante.'),\n    question: S(\"La question que l'analyste posera au dirigeant sur le stand : ancrée dans un fait ou un point à vérifier, appelant une réponse chiffrée ; sans citer Starquest ni proposer d'investir.\"),\n  } };\n}\n\n// Reads the AI's answer. The AI decides the category; this step only formats it and keeps the search record.\nconst c = JSON.parse(JSON.stringify($('Analysis request').item.json.c));\nconst prev = $('Analysis · retry check').item.json;\nif (prev.skip) {\n  const r = c.routing;\n  const why = !r ? 'Erreur de routage : ' + (c.routing_error || 'réponse vide') : r.fonds === 'Non identifiée' ? 'non identifiée' : 'hors thèse : ' + (r.activite || '');\n  return { json: { c, a: r ? { identite: r.identite, motif_pass: why, motif_source: r.activite_source, etape_pass: 'Étape 2', verdict_profil: 'hors profil', verticale: 'Hors verticales', pertinence: 1, raisonnement: r.justification || '' } : null,\n    error: r ? '' : why, retried: false, category: r ? 'PASS' : 'ERROR', routed_out: true } };\n}\nlet res = prev.ok ? prev.first : $json;\nlet a = null, error = '';\ntry { a = geminiJson(res); if (!a || typeof a !== 'object') throw new Error('empty answer'); } catch (e) {\n  error = e.message;\n  if (!prev.ok && prev.first_raw) { try { a = geminiJson(prev.first_raw); res = prev.first_raw; error = ''; } catch (e2) {} }\n}\nconst gm = (res && res.candidates && res.candidates[0] && res.candidates[0].groundingMetadata) || {};\nc.queries = gm.webSearchQueries || [];\nc.sources = consultedSources(res).slice(0, 15);\nc.searched = searchedIn(res);\nif (!a) return { json: { c, a: null, error, retried: !prev.ok, category: 'ERROR' } };\nconst category = CATS.includes(a.categorie) ? a.categorie : 'PASS';\nreturn { json: { c, a, error: '', retried: !prev.ok, category } };\n"
+      },
+      "id": "52a9c282-6e54-4c2b-9564-d0ac3f5341e8",
+      "name": "Read analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        15088,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Builds the rows for the three tabs of the Google Sheet: À rencontrer, Exposants, Audit.\nconst isUrl = u => /^https?:\\/\\/[^\\s]+\\.[^\\s]+/.test(String(u || ''));\nconst host = u => String(u || '').replace(/^https?:\\/\\//, '').replace(/^www\\./, '').split('/')[0];\nconst q = s => String(s ?? '').replace(/\"/g, '\"\"').slice(0, 1500);\n// A sourced fact as a clickable cell: =HYPERLINK(url; \"✓ fact (site, date)\").\n// The argument separator depends on the Sheet's locale: \";\" for French, \",\" for English (Config.separateur_formule).\nconst SEP = $('Config').first().json.separateur_formule || ';';\nconst cell = (text, url) => isUrl(url) ? `=HYPERLINK(\"${q(url)}\"${SEP}\"${q(text)}\")` : String(text ?? '');\nconst site = (p) => p.site || (/vertexaisearch/.test(p.source) ? 'source' : host(p.source));\nconst proofCell = p => {\n  if (!p || p.statut === '?' || !p.fait) return '? Non trouvé';\n  const ref = isUrl(p.source) ? ` (${[site(p), p.date].filter(Boolean).join(', ')})` : '';\n  return cell(`${p.statut} ${p.fait}${ref}`, p.source);\n};\nconst SORTIE = { 'P1': 'P1', 'P2': 'P2', 'À SUIVRE': 'À suivre', 'ERROR': 'À analyser' };\nconst LABEL = { 'P1': 'P1', 'P2': 'P2', 'À SUIVRE': 'À suivre' };\nconst ORDER = { 'P1': 0, 'P2': 1, 'À SUIVRE': 2, 'PASS': 3, 'ERROR': 4 };\n// Impact is the entry condition (Article 9 funds): no Impact ✓, no P1 or P2.\nconst rule = (imp, impD, others, pert) => imp && others === 2 && pert === 3 ? 'P1' : imp && others >= 1 ? 'P2'\n  : imp || (impD && others >= 1) ? 'À SUIVRE' : 'PASS';\n\nconst out = $input.all().map(i => i.json).map(x => {\n  const { c, a, category } = x;\n  const proofs = a ? ['impact', 'traction', 'potentiel'].map(k => a[k] || {}) : [];\n  const ok = p => p && p.statut === '✓' && isUrl(p.source);\n  const nOk = proofs.filter(ok).length;\n  const imp = a ? ok(a.impact) : false, impD = !!(a && a.impact && a.impact.statut === 'D' && !imp);\n  const others = a ? [a.traction, a.potentiel].filter(ok).length : 0;\n  // The AI says where a PASS leaves: step 2 (profile, verticals, not identified) or step 3 (no proof).\n  const passStep3 = category === 'PASS' && !!a && a.etape_pass === 'Étape 3';\n  // A PASS with no stated reason is checked against the proof rule (the AI sometimes concludes P2 in its reasoning but outputs PASS).\n  const passWithReason = category === 'PASS' && a && String(a.motif_pass || '').trim().length > 0;\n  const expected = !a ? category : passWithReason && !passStep3 ? 'PASS' : rule(imp, impD, others, a.pertinence);\n  const meet = !!LABEL[category];\n  const tab = category === 'P1' || category === 'P2' ? 'rencontrer' : category === 'À SUIVRE' ? 'suivre' : '';\n  const firstUrl = a ? [a.impact && a.impact.source, a.traction && a.traction.source, a.profil_source].find(isUrl) : '';\n  // Two-step method: 1 = list of the salon; 2a = profile, stage and thesis checked by the AI; 2b = proofs.\n  const sortie = category === 'PASS' ? (passStep3 ? 'Étape 2b' : 'Étape 2a') : SORTIE[category];\n  const resultat = category === 'PASS' ? `${sortie} – Pass${x.routed_out ? '' : ' ' + c.fonds} : ${a.motif_pass || (passStep3 ? 'aucune preuve vérifiée' : 'hors profil')} (workflow)`\n    : meet ? `Retenu – ${LABEL[category]} (${nOk} preuve(s) ✓, pertinence ${a.pertinence}/3) (workflow)`\n    : `Erreur technique : ${x.error} (relancer)`;\n  const srcUrl = category === 'PASS' ? (isUrl(a.motif_source) ? a.motif_source : a.profil_source) : firstUrl;\n  return {\n    order: ORDER[category] ?? 9, pert: a ? a.pertinence : 0, nOk,\n    tab, rencontrer: meet ? {\n      'Priorité': LABEL[category], 'Entreprise': c.name, 'Fonds': c.fonds + (c.routing && c.routing.fonds_secondaire && c.routing.fonds_secondaire !== 'Aucun' ? ' (+ ' + c.routing.fonds_secondaire + ')' : ''), 'Pourquoi les rencontrer': a.pourquoi, 'Stand': c.stand,\n      'Profil (type, CA, source)': cell([a.profil_type, a.chiffre_affaires ? 'CA ' + a.chiffre_affaires : 'CA non publié', a.profil].filter(Boolean).join(' · ') + (isUrl(a.profil_source) ? ` (${host(a.profil_source)})` : ''), a.profil_source),\n      'Type de deal': a.type_deal || 'À déterminer', 'Impact': proofCell(a.impact), 'Traction': proofCell(a.traction), 'Potentiel': proofCell(a.potentiel), 'Question à poser': a.question,\n    } : null,\n    exposant: { 'Entreprise': c.name, 'Stand': c.stand, 'Salon': c.salon, 'Fonds visé': c.fonds, 'Sortie': sortie, 'Résultat': resultat,\n      'Source': isUrl(srcUrl) ? cell(site({ source: srcUrl, site: '' }), srcUrl) : '' },\n    audit: { 'Entreprise': c.name, 'Fonds IA': c.routing ? c.routing.fonds : '', 'Fonds étape 1': c.fonds_etape1 || '', 'Fonds changé': c.routing && c.fonds_etape1 && c.routing.fonds !== c.fonds_etape1 ? 'oui' : '', 'Fonds secondaire': c.routing ? c.routing.fonds_secondaire : '', 'Justification fonds': c.routing ? c.routing.justification : '', 'Décision IA': category, 'Pertinence': a ? a.pertinence : '', 'Preuves ✓ avec URL': a ? nOk : '',\n      'Impact ✓': a ? (imp ? 'oui' : 'non') : '', 'Type de deal': a ? a.type_deal : '', 'Contrôle règle': !a ? '' : expected === category ? 'OK' : `Écart : la règle donne ${expected}`, 'Priorité précédente': c.prev,\n      'Identité': a ? a.identite : '', 'Verticale': a ? a.verticale : '', 'Verdict profil': a ? a.verdict_profil : '', 'Pertinence (raison)': a ? a.pertinence_raison : '',\n      'Raisonnement': a ? a.raisonnement : '', 'Recherche Google faite': c.searched ? 'oui' : 'NON', 'Recherches Google': (c.queries || []).join(' | '), 'Pages consultées': (c.sources || []).map(s => s.domain).join(' '),\n      '2e essai': x.retried ? 'oui' : '', 'Erreur': x.error || '' },\n  };\n});\n// P1, then P2, then À suivre; alphabetical inside each priority.\nout.sort((p, q2) => p.order - q2.order || p.audit.Entreprise.localeCompare(q2.audit.Entreprise, 'fr', { sensitivity: 'base' }));\nreturn out.map(o => ({ json: o }));\n"
+      },
+      "id": "50236881-6256-4668-9f1f-fa4f60f9484c",
+      "name": "Finalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        15328,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().filter(i => i.json.tab === 'rencontrer').map(i => ({ json: i.json.rencontrer }));\n"
+      },
+      "id": "60b68c08-8188-4463-8358-7c170da148c2",
+      "name": "Lignes · À rencontrer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        15568,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.spreadsheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "À rencontrer"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "Entreprise"
+          ],
+          "schema": [
+            {
+              "id": "Priorité",
+              "displayName": "Priorité",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Entreprise",
+              "displayName": "Entreprise",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fonds",
+              "displayName": "Fonds",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Pourquoi les rencontrer",
+              "displayName": "Pourquoi les rencontrer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Stand",
+              "displayName": "Stand",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Profil (type, CA, source)",
+              "displayName": "Profil (type, CA, source)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Type de deal",
+              "displayName": "Type de deal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Impact",
+              "displayName": "Impact",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Traction",
+              "displayName": "Traction",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Potentiel",
+              "displayName": "Potentiel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Question à poser",
+              "displayName": "Question à poser",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "f43803b0-eec2-474c-bf53-275120897606",
+      "name": "Sheet · À rencontrer",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        15808,
+        48
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2SEvt0TSZ362HKT7",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().filter(i => i.json.tab === 'suivre').map(i => ({ json: i.json.rencontrer }));\n"
+      },
+      "id": "5b3e6725-3ee8-467a-b1c6-fc8537699b75",
+      "name": "Lignes · À suivre",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        15568,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.spreadsheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "À suivre"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "Entreprise"
+          ],
+          "schema": [
+            {
+              "id": "Priorité",
+              "displayName": "Priorité",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Entreprise",
+              "displayName": "Entreprise",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fonds",
+              "displayName": "Fonds",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Pourquoi les rencontrer",
+              "displayName": "Pourquoi les rencontrer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Stand",
+              "displayName": "Stand",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Profil (type, CA, source)",
+              "displayName": "Profil (type, CA, source)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Type de deal",
+              "displayName": "Type de deal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Impact",
+              "displayName": "Impact",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Traction",
+              "displayName": "Traction",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Potentiel",
+              "displayName": "Potentiel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Question à poser",
+              "displayName": "Question à poser",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "ffbb8b27-45ea-4195-bb88-ed8623de016f",
+      "name": "Sheet · À suivre",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        15808,
+        224
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2SEvt0TSZ362HKT7",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(i => ({ json: i.json.exposant }));\n"
+      },
+      "id": "07793649-6514-4d3c-ba7f-9a5f147e05e3",
+      "name": "Lignes · Exposants",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        15568,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.spreadsheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Exposants"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "Entreprise"
+          ],
+          "schema": [
+            {
+              "id": "Entreprise",
+              "displayName": "Entreprise",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Stand",
+              "displayName": "Stand",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Salon",
+              "displayName": "Salon",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fonds visé",
+              "displayName": "Fonds visé",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Sortie",
+              "displayName": "Sortie",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Résultat",
+              "displayName": "Résultat",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "d67715f0-a417-49f2-8042-91aa9319e9cc",
+      "name": "Sheet · Exposants",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        15808,
+        400
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2SEvt0TSZ362HKT7",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(i => ({ json: i.json.audit }));\n"
+      },
+      "id": "38a2f030-6070-49a6-b06e-e4c5c9157b40",
+      "name": "Lignes · Audit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        15568,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "fileName": "starquest_audit.csv"
+        }
+      },
+      "id": "7031e649-8ca0-42b6-82a9-78d58d5ff327",
+      "name": "CSV audit",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        15808,
+        608
+      ]
+    }
+  ],
+  "connections": {
+    "Lancer le screening": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Entreprises étape 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entreprises étape 1": {
+      "main": [
+        [
+          {
+            "node": "Prepare companies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare companies": {
+      "main": [
+        [
+          {
+            "node": "Routing request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Routing request": {
+      "main": [
+        [
+          {
+            "node": "Gemini · Routing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini · Routing": {
+      "main": [
+        [
+          {
+            "node": "Routing · retry check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Routing · retry check": {
+      "main": [
+        [
+          {
+            "node": "Routing · 2nd try",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Routing · 2nd try": {
+      "main": [
+        [
+          {
+            "node": "Read routing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read routing": {
+      "main": [
+        [
+          {
+            "node": "Analysis request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analysis request": {
+      "main": [
+        [
+          {
+            "node": "Gemini · Research & analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini · Research & analysis": {
+      "main": [
+        [
+          {
+            "node": "Analysis · retry check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analysis · retry check": {
+      "main": [
+        [
+          {
+            "node": "Analysis · 2nd try",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analysis · 2nd try": {
+      "main": [
+        [
+          {
+            "node": "Read analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read analysis": {
+      "main": [
+        [
+          {
+            "node": "Finalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize": {
+      "main": [
+        [
+          {
+            "node": "Lignes · À rencontrer",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Lignes · À suivre",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Lignes · Exposants",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Lignes · Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lignes · À rencontrer": {
+      "main": [
+        [
+          {
+            "node": "Sheet · À rencontrer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lignes · À suivre": {
+      "main": [
+        [
+          {
+            "node": "Sheet · À suivre",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lignes · Exposants": {
+      "main": [
+        [
+          {
+            "node": "Sheet · Exposants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lignes · Audit": {
+      "main": [
+        [
+          {
+            "node": "CSV audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}
